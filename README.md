@@ -11,6 +11,14 @@ https://ehangyu06.github.io/shadowing-trainer/
 
 Mac이 꺼져 있어도 앱 화면은 열립니다. 원본 영화가 없으면 Library 또는 Study 화면에서 **Select Video File**을 눌러 iPad Files의 mp4/mov를 고르면, 저장된 start/end로 공부합니다.
 
+### Pages를 처음 켤 때
+
+1. https://github.com/ehangyu06/shadowing-trainer/settings/pages
+2. **Source** = GitHub Actions
+3. main에 push되면 `.github/workflows/pages.yml`이 배포합니다.
+
+집에서 클립을 새로 만들거나 수정한 뒤에는 `data/clips.json`이 갱신되도록 저장하고, 그 변경을 GitHub에 push해야 직장 iPad에도 반영됩니다.
+
 ## 집에서 실행
 
 ```bash
