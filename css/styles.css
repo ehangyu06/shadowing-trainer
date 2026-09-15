@@ -453,7 +453,14 @@ html.editor-lock #app {
 }
 
 .file-input {
-  display: none;
+  position: fixed;
+  left: -40px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .file-btn {

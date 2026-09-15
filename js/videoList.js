@@ -1,4 +1,4 @@
-import { fetchJsonIfOk, resourceUrl, urlLooksReachable } from "./http.js";
+import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js";
 
 export const VIDEO_CATALOG_KEY = "shadowing-trainer:videos";
 
@@ -8,7 +8,7 @@ export function videoIdFromName(name) {
     .pop()
     .replace(/\.[^.]+$/, "");
   const slug = base.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-  return slug || "video";
+  return slug || `video_${Date.now().toString(36)}`;
 }
 
 function normalizeVideo(item) {
@@ -75,14 +75,27 @@ export async function upsertVideo(partial) {
 }
 
 export async function uploadVideo(file) {
-  const body = new FormData();
-  body.append("file", file, file.name);
-  const res = await fetch(resourceUrl("api/upload"), { method: "POST", body });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Upload failed");
+  if (!isLocalMediaHost()) {
+    return { ok: false, skipped: true };
   }
-  return res.json();
+  const body = new FormData();
+  body.append("file", file, file.name || "video.mp4");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(resourceUrl("api/upload"), {
+      method: "POST",
+      body,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || "Upload failed");
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function bundledOrHttpUrl(video) {

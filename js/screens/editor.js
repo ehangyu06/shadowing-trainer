@@ -5,6 +5,33 @@ import { createLoopPlayer, setVideoSource } from "../loopPlayer.js";
 import { formatClock, formatDuration, roundTenth, clamp } from "../time.js";
 import { el, seekFixPad, confirmAction } from "../ui.js";
 
+function waitForVideoReady(videoEl, timeoutMs = 20000) {
+  if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("Video took too long to open"));
+    }, timeoutMs);
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("This video cannot be played in Safari"));
+    };
+    function cleanup() {
+      clearTimeout(timer);
+      videoEl.removeEventListener("loadedmetadata", onReady);
+      videoEl.removeEventListener("error", onError);
+    }
+    videoEl.addEventListener("loadedmetadata", onReady, { once: true });
+    videoEl.addEventListener("error", onError, { once: true });
+  });
+}
+
 export async function renderEditor(root, clipId) {
   const videos = await loadVideos();
   const clips = await loadClips();
@@ -178,10 +205,18 @@ export async function renderEditor(root, clipId) {
     const url = await resolveVideoUrl(draft.video_id);
     if (!url) {
       status.textContent = `Select a video file for ${draft.video_id}.`;
-      return;
+      return false;
     }
     setVideoSource(video, url);
-    video.load();
+    try {
+      await waitForVideoReady(video);
+      duration = video.duration || 0;
+      if (isNew && draft.end <= draft.start) setEnd(duration);
+      return true;
+    } catch (err) {
+      status.textContent = err.message || "Could not open video.";
+      return false;
+    }
   }
 
   video.addEventListener("loadedmetadata", () => {
@@ -198,9 +233,9 @@ export async function renderEditor(root, clipId) {
   video.addEventListener("pause", refreshPlayButtons);
 
   fillVideoSelect();
-  videoSelect.addEventListener("change", () => {
+  videoSelect.addEventListener("change", async () => {
     draft.video_id = videoSelect.value;
-    loadSelectedVideo();
+    await loadSelectedVideo();
     attachPlayer();
   });
 
@@ -239,27 +274,49 @@ export async function renderEditor(root, clipId) {
 
   const fileInput = el("input", {
     type: "file",
-    accept: "video/mp4,video/quicktime,video/*",
+    accept: "video/*,.mp4,.mov,.m4v",
     class: "file-input",
   });
-  fileInput.addEventListener("change", async () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    status.textContent = "Linking video file…";
-    const videoId = await bindPickedFile(file);
-    draft.video_id = videoId;
-    const fresh = await loadVideos();
-    videos.splice(0, videos.length, ...fresh);
-    fillVideoSelect();
-    videoSelect.value = draft.video_id;
-    try {
-      await uploadVideo(file);
-    } catch {
-      // GitHub Pages and iPad have no upload API. Local file binding is enough.
+
+  async function handlePickedFile(file) {
+    if (!file) {
+      status.textContent = "No file was selected.";
+      return;
     }
-    await loadSelectedVideo();
-    attachPlayer();
-    status.textContent = `Linked ${file.name} to ${videoId}`;
+    status.textContent = `Opening ${file.name || "video"}…`;
+    stopPreviewMode();
+    video.pause();
+    try {
+      const { videoId, url } = await bindPickedFile(file);
+      draft.video_id = videoId;
+      const fresh = await loadVideos();
+      videos.splice(0, videos.length, ...fresh);
+      fillVideoSelect();
+      videoSelect.value = draft.video_id;
+      setVideoSource(video, url);
+      await waitForVideoReady(video);
+      duration = video.duration || 0;
+      if (draft.end <= draft.start) setEnd(duration);
+      attachPlayer();
+      uploadVideo(file).catch(() => {});
+      status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s)`;
+    } catch (err) {
+      status.textContent = err.message || "Could not open this video. Try Files app → Browse, or another format.";
+    } finally {
+      fileInput.value = "";
+    }
+  }
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    handlePickedFile(file);
+  });
+
+  const pickBtn = el("button", {
+    type: "button",
+    class: "btn btn-secondary btn-block",
+    text: "Select Video File",
+    onClick: () => fileInput.click(),
   });
 
   const sticky = el("div", { class: "editor-sticky" }, [
@@ -280,6 +337,9 @@ export async function renderEditor(root, clipId) {
         onClick: fixEnd,
       }),
     ]),
+    pickBtn,
+    fileInput,
+    status,
   ]);
 
   const screen = el("section", { class: "screen editor-screen" }, [
@@ -296,10 +356,6 @@ export async function renderEditor(root, clipId) {
       endPad,
       el("label", { class: "field-label", text: "Video" }),
       videoSelect,
-      el("label", { class: "btn btn-secondary btn-block file-btn" }, [
-        "Select Video File",
-        fileInput,
-      ]),
       el("label", { class: "field-label", text: "English subtitle" }),
       englishInput,
       el("label", { class: "field-label", text: "한글 자막" }),
@@ -338,7 +394,6 @@ export async function renderEditor(root, clipId) {
           }),
         el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Cancel" }),
       ]),
-      status,
     ]),
   ]);
 

@@ -165,19 +165,22 @@ export async function renderShadowing(root, clipId) {
   });
   const pickInput = el("input", {
     type: "file",
-    accept: "video/mp4,video/quicktime,video/*",
+    accept: "video/*,.mp4,.mov,.m4v",
     class: "file-input",
   });
-  const pickBtn = el("label", { class: "btn btn-secondary btn-block file-btn hidden" }, [
-    "Select Video File",
-    pickInput,
-  ]);
+  const pickBtn = el("button", {
+    type: "button",
+    class: "btn btn-secondary btn-block file-btn hidden",
+    text: "Select Video File",
+    onClick: () => pickInput.click(),
+  });
   const startOverlay = el("div", { class: "overlay start-overlay" }, [
     el("div", { class: "overlay-card" }, [
       el("h2", { text: "Start Shadowing" }),
       startNote,
       startBtn,
       pickBtn,
+      pickInput,
     ]),
   ]);
   const completeOverlay = el("div", { class: "overlay complete-overlay hidden", hidden: true }, [
@@ -346,9 +349,18 @@ export async function renderShadowing(root, clipId) {
   pickInput.addEventListener("change", async () => {
     const file = pickInput.files?.[0];
     if (!file) return;
-    await bindPickedFile(file, state.clip.video_id);
-    await attachMedia();
-    refreshChrome();
+    try {
+      const { url } = await bindPickedFile(file, state.clip.video_id);
+      setVideoSource(video, url);
+      await attachMedia();
+      refreshChrome();
+    } catch (err) {
+      startNote.textContent = err.message || "Could not open this video.";
+      pickBtn.classList.remove("hidden");
+      startBtn.classList.add("hidden");
+    } finally {
+      pickInput.value = "";
+    }
   });
   playBtn.addEventListener("click", async () => {
     if (!state.started) {

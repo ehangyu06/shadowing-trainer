@@ -41,13 +41,14 @@ export async function renderLibrary(root) {
     const row = el("div", { class: "bind-row" });
     const input = el("input", {
       type: "file",
-      accept: "video/mp4,video/quicktime,video/*",
-      class: "file-input",
-    });
-    input.addEventListener("change", async () => {
+    accept: "video/*,.mp4,.mov,.m4v",
+    class: "file-input",
+  });
+  input.addEventListener("change", async () => {
       const file = input.files?.[0];
       if (!file) return;
       await bindPickedFile(file, videoId);
+      input.value = "";
       renderLibrary(root);
     });
     row.append(
@@ -62,10 +63,13 @@ export async function renderLibrary(root) {
               : "Select Video File from Files",
         }),
       ]),
-      el("label", { class: "btn btn-secondary" }, [
-        url ? "Change Video File" : "Select Video File",
-        input,
-      ])
+      el("button", {
+        type: "button",
+        class: "btn btn-secondary",
+        text: url ? "Change Video File" : "Select Video File",
+        onClick: () => input.click(),
+      }),
+      input
     );
     bindBox.append(row);
   }

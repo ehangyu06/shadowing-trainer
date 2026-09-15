@@ -35,9 +35,10 @@ export function bindLocalFile(videoId, file) {
   objectUrls.set(videoId, url);
   const bindings = readBindings();
   bindings[videoId] = {
-    filename: file.name,
+    filename: file.name || `${videoId}.mp4`,
     size: file.size,
     lastModified: file.lastModified,
+    type: file.type || "",
   };
   writeBindings(bindings);
   return url;
@@ -64,14 +65,17 @@ export async function resolveVideoUrl(videoId) {
 }
 
 export async function bindPickedFile(file, preferredId) {
-  const videoId = preferredId || videoIdFromName(file.name);
+  if (!file) throw new Error("No file selected");
+  const fallbackName = preferredId ? `${preferredId}.mp4` : `clip_${Date.now()}.mp4`;
+  const name = file.name || fallbackName;
+  const videoId = preferredId || videoIdFromName(name);
   await upsertVideo({
     id: videoId,
-    title: file.name.replace(/\.[^.]+$/, ""),
-    filename: file.name,
+    title: name.replace(/\.[^.]+$/, "") || videoId,
+    filename: name,
   });
-  bindLocalFile(videoId, file);
-  return videoId;
+  const url = bindLocalFile(videoId, file);
+  return { videoId, url };
 }
 
 export function expectedFilename(video, binding) {
