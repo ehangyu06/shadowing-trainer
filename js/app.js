@@ -25,7 +25,9 @@ async function render() {
   }
   if (current.key === route.key && route.name === "shadowing") return;
   current = { name: route.name, key: route.key };
-  document.documentElement.classList.toggle("editor-lock", route.name === "editor");
+  const editing = route.name === "editor";
+  document.documentElement.classList.toggle("editor-lock", editing);
+  document.body.classList.toggle("editor-lock", editing);
   window.scrollTo(0, 0);
   if (route.name === "settings") renderSettings(root);
   else if (route.name === "editor") await renderEditor(root, route.id);

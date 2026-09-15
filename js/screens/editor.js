@@ -342,15 +342,15 @@ export async function renderEditor(root, clipId) {
     status,
   ]);
 
-  const screen = el("section", { class: "screen editor-screen" }, [
+  const screen = el("section", { class: "editor-screen" }, [
     el("div", { class: "editor-top" }, [
-      el("header", { class: "topbar" }, [
+      el("header", { class: "topbar editor-topbar" }, [
         el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
         el("a", { class: "btn btn-ghost", href: "#/", text: "Library" }),
       ]),
       sticky,
     ]),
-    el("div", { class: "editor-body" }, [
+    el("div", { class: "editor-body", id: "editor-scroll" }, [
       previewBtn,
       startPad,
       endPad,
@@ -398,9 +398,10 @@ export async function renderEditor(root, clipId) {
   ]);
 
   document.documentElement.classList.add("editor-lock");
+  document.body.classList.add("editor-lock");
   refreshRange();
   refreshPlayButtons();
-  root.append(screen);
+  root.replaceChildren(screen);
   if (draft.video_id) loadSelectedVideo();
   attachPlayer();
 }
