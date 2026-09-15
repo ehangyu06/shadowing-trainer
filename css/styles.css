@@ -342,14 +342,8 @@ textarea {
 }
 
 .editor-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: var(--bg);
-  padding: 0 0 10px;
-  margin: 0 0 8px;
-  border-bottom: 1px solid var(--line);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  padding: 0;
+  margin: 0;
 }
 
 .editor-sticky .time-readout {
@@ -358,21 +352,63 @@ textarea {
 }
 
 .editor-sticky .editor-video {
-  max-height: 34vh;
-  min-height: 160px;
+  max-height: min(32vh, 280px);
+  min-height: 140px;
 }
 
 .editor-set-row {
   margin-top: 4px;
 }
 
+.editor-screen {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--pad);
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.editor-top {
+  flex: 0 0 auto;
+  background: var(--bg);
+  z-index: 40;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.editor-top .topbar {
+  margin-bottom: 10px;
+}
+
 .editor-body {
-  padding-bottom: 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 10px 0 calc(var(--pad) + 28px);
 }
 
 .editor-body > .btn {
   width: 100%;
   margin: 8px 0 4px;
+}
+
+html.editor-lock,
+html.editor-lock body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html.editor-lock #app {
+  height: 100%;
+  overflow: hidden;
 }
 
 .chip-row,

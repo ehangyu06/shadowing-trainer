@@ -283,11 +283,13 @@ export async function renderEditor(root, clipId) {
   ]);
 
   const screen = el("section", { class: "screen editor-screen" }, [
-    el("header", { class: "topbar" }, [
-      el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
-      el("a", { class: "btn btn-ghost", href: "#/", text: "Library" }),
+    el("div", { class: "editor-top" }, [
+      el("header", { class: "topbar" }, [
+        el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
+        el("a", { class: "btn btn-ghost", href: "#/", text: "Library" }),
+      ]),
+      sticky,
     ]),
-    sticky,
     el("div", { class: "editor-body" }, [
       previewBtn,
       startPad,
@@ -340,6 +342,7 @@ export async function renderEditor(root, clipId) {
     ]),
   ]);
 
+  document.documentElement.classList.add("editor-lock");
   refreshRange();
   refreshPlayButtons();
   root.append(screen);
