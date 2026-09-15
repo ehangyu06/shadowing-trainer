@@ -137,6 +137,32 @@ export async function renderShadowing(root, clipId) {
     class: "btn btn-primary btn-block",
     text: "Start Shadowing",
   });
+  const markStartPressed = () => {
+    startBtn.classList.add("is-pressed", "is-starting");
+    startBtn.textContent = "Starting…";
+  };
+  const clearStartPressed = () => {
+    startBtn.classList.remove("is-pressed", "is-starting");
+    if (!state.started) startBtn.textContent = "Start Shadowing";
+  };
+  startBtn.addEventListener("pointerdown", () => {
+    startBtn.classList.add("is-pressed");
+  });
+  startBtn.addEventListener("pointerup", () => {
+    if (!startBtn.classList.contains("is-starting")) {
+      startBtn.classList.remove("is-pressed");
+    }
+  });
+  startBtn.addEventListener("pointercancel", () => {
+    if (!startBtn.classList.contains("is-starting")) {
+      startBtn.classList.remove("is-pressed");
+    }
+  });
+  startBtn.addEventListener("pointerleave", () => {
+    if (!startBtn.classList.contains("is-starting")) {
+      startBtn.classList.remove("is-pressed");
+    }
+  });
   const pickInput = el("input", {
     type: "file",
     accept: "video/mp4,video/quicktime,video/*",
@@ -254,6 +280,7 @@ export async function renderShadowing(root, clipId) {
 
   async function playFromStart() {
     if (!state.mediaReady) return;
+    markStartPressed();
     player.setRange(state.clip.start, state.clip.end);
     applyRate(video, state.playbackRate);
     if (video.readyState < 1) {
@@ -264,6 +291,7 @@ export async function renderShadowing(root, clipId) {
         });
       } catch {
         state.started = false;
+        clearStartPressed();
         refreshChrome();
         return;
       }
@@ -275,6 +303,7 @@ export async function renderShadowing(root, clipId) {
       state.started = true;
     } catch {
       state.started = false;
+      clearStartPressed();
     }
     refreshChrome();
   }
@@ -353,6 +382,11 @@ export async function renderShadowing(root, clipId) {
   });
 
   const screen = el("section", { class: "screen train-screen" }, [
+    el("a", {
+      class: "btn btn-ghost back-library-fixed",
+      href: "#/",
+      text: "Back to Library",
+    }),
     el("div", { class: "train-layout" }, [
       el("div", { class: "train-video" }, [video, startOverlay, completeOverlay]),
       el("div", { class: "train-side" }, [
@@ -401,7 +435,6 @@ export async function renderShadowing(root, clipId) {
         el("div", { class: "chip-row" }, speedButtons),
         el("p", { class: "field-label", text: "Subtitle Mode" }),
         el("div", { class: "chip-row" }, subtitleButtons),
-        el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Back to Library" }),
       ]),
     ]),
   ]);

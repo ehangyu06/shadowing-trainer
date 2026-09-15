@@ -62,6 +62,21 @@ textarea {
   padding: 8px;
   min-height: 100vh;
   min-height: 100dvh;
+  position: relative;
+}
+
+.back-library-fixed {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 80;
+  min-height: 48px;
+  padding: 10px 14px;
+  background: rgba(22, 24, 31, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .topbar {
@@ -120,6 +135,32 @@ textarea {
   background: var(--accent);
   color: #fff;
   font-weight: 700;
+  transition: background-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease,
+    filter 0.12s ease;
+}
+
+.btn:active,
+.chip:active,
+.phase-btn:active,
+.stepper-btn:active,
+.btn.is-pressed,
+.btn-primary.is-pressed {
+  transform: scale(0.96);
+  filter: brightness(0.72);
+}
+
+.btn-primary:active,
+.btn-primary.is-pressed {
+  background: #1e4fad;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45);
+  filter: none;
+}
+
+.btn-primary.is-starting {
+  background: #163a80;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5);
+  transform: scale(0.98);
+  pointer-events: none;
 }
 
 .btn-secondary {
@@ -268,6 +309,36 @@ textarea {
   color: var(--text);
   text-align: center;
   font-size: 1.2rem;
+}
+
+.mark-pad {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.mark-pad .settings-label {
+  margin-bottom: 10px;
+}
+
+.mark-pad-row {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr 1fr;
+  gap: 8px;
+}
+
+.mark-pad-row .btn {
+  min-height: var(--touch);
+  padding: 10px 8px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.mark-play {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .chip-row,

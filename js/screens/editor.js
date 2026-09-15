@@ -1,10 +1,9 @@
-import { TIME_STEP } from "../constants.js";
 import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js";
 import { loadVideos, uploadVideo } from "../videoList.js";
 import { bindPickedFile, resolveVideoUrl } from "../videoSource.js";
 import { createLoopPlayer, setVideoSource } from "../loopPlayer.js";
 import { formatClock, formatDuration, roundTenth, clamp } from "../time.js";
-import { el, stepper, confirmAction } from "../ui.js";
+import { el, timeMarkPad, confirmAction } from "../ui.js";
 
 export async function renderEditor(root, clipId) {
   const videos = await loadVideos();
@@ -26,6 +25,7 @@ export async function renderEditor(root, clipId) {
   let duration = 0;
   let previewing = false;
   let player = null;
+  let activeMark = null;
 
   root.replaceChildren();
 
@@ -81,40 +81,112 @@ export async function renderEditor(root, clipId) {
     rangeEl.textContent = `Start: ${formatClock(draft.start)}   End: ${formatClock(draft.end)}   Duration: ${formatDuration(len)}`;
   }
 
+  function stopPreviewMode() {
+    if (!previewing) return;
+    previewing = false;
+    previewBtn.textContent = "Preview Loop";
+    previewBtn.classList.remove("btn-danger");
+    player?.disable();
+  }
+
+  function syncMarkPlaying() {
+    const playing = !video.paused && !previewing;
+    if (activeMark === "start") {
+      startPad.setPlaying(playing);
+      endPad.setPlaying(false);
+    } else if (activeMark === "end") {
+      endPad.setPlaying(playing);
+      startPad.setPlaying(false);
+    } else {
+      startPad.setPlaying(false);
+      endPad.setPlaying(false);
+    }
+  }
+
+  async function playFromMark(which, mark, currentlyPlaying) {
+    stopPreviewMode();
+    if (currentlyPlaying) {
+      video.pause();
+      activeMark = null;
+      syncMarkPlaying();
+      return false;
+    }
+    activeMark = which;
+    const t = clamp(roundTenth(mark), 0, duration > 0 ? duration : mark);
+    try {
+      video.currentTime = t;
+    } catch {
+      /* metadata may not be ready */
+    }
+    try {
+      await video.play();
+      status.textContent = `${which === "start" ? "Start" : "End"} preview from ${t.toFixed(1)}s — tap the center button again to stop.`;
+      syncMarkPlaying();
+      return true;
+    } catch {
+      status.textContent = "Tap Play on the video once, then try again.";
+      activeMark = null;
+      syncMarkPlaying();
+      return false;
+    }
+  }
+
+  function seekToMark(mark) {
+    stopPreviewMode();
+    activeMark = null;
+    video.pause();
+    try {
+      video.currentTime = clamp(roundTenth(mark), 0, duration > 0 ? duration : mark);
+    } catch {
+      /* ignore */
+    }
+    syncMarkPlaying();
+  }
+
   function setStart(value) {
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     draft.start = clamp(roundTenth(value), 0, max);
-    if (startStepper) startStepper.setValue(draft.start);
+    startPad.setValue(draft.start);
     refreshRange();
+    if (player) player.setRange(draft.start, draft.end);
   }
 
   function setEnd(value) {
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     draft.end = clamp(roundTenth(value), 0, max);
-    if (endStepper) endStepper.setValue(draft.end);
+    endPad.setValue(draft.end);
     refreshRange();
     if (player) player.setRange(draft.start, draft.end);
   }
 
-  const startStepper = stepper({
+  const startPad = timeMarkPad({
+    label: "Start",
     value: draft.start,
-    step: TIME_STEP,
-    min: 0,
-    max: 24 * 60 * 60,
-    decimals: 1,
-    minusLabel: "−0.1",
-    plusLabel: "+0.1",
-    onChange: (n) => setStart(n),
+    onAdjust: (mark) => {
+      seekToMark(mark);
+      status.textContent = `Start candidate ${mark.toFixed(1)}s — Fix when it looks right.`;
+    },
+    onTogglePlay: (mark, playing) => playFromMark("start", mark, playing),
+    onFix: (mark) => {
+      setStart(mark);
+      seekToMark(draft.start);
+      status.textContent = `Start fixed at ${draft.start.toFixed(1)}s`;
+    },
   });
-  const endStepper = stepper({
+
+  const endPad = timeMarkPad({
+    label: "End",
     value: draft.end,
-    step: TIME_STEP,
-    min: 0,
-    max: 24 * 60 * 60,
-    decimals: 1,
-    minusLabel: "−0.1",
-    plusLabel: "+0.1",
-    onChange: (n) => setEnd(n),
+    onAdjust: (mark) => {
+      seekToMark(mark);
+      status.textContent = `End candidate ${mark.toFixed(1)}s — Fix when it looks right.`;
+    },
+    onTogglePlay: (mark, playing) => playFromMark("end", mark, playing),
+    onFix: (mark) => {
+      setEnd(mark);
+      seekToMark(draft.end);
+      status.textContent = `End fixed at ${draft.end.toFixed(1)}s`;
+    },
   });
 
   function attachPlayer() {
@@ -139,15 +211,22 @@ export async function renderEditor(root, clipId) {
 
   video.addEventListener("loadedmetadata", () => {
     duration = video.duration || 0;
+    startPad.setMax(duration || 24 * 60 * 60);
+    endPad.setMax(duration || 24 * 60 * 60);
     if (isNew && draft.end <= draft.start) {
       setEnd(duration);
     }
-    startStepper.querySelector("input").max = String(duration);
-    endStepper.querySelector("input").max = String(duration);
   });
 
   video.addEventListener("timeupdate", () => {
     currentTimeEl.textContent = `Current: ${formatClock(video.currentTime)} (${roundTenth(video.currentTime).toFixed(1)}s)`;
+  });
+  video.addEventListener("play", syncMarkPlaying);
+  video.addEventListener("pause", () => {
+    if (!previewing) {
+      activeMark = null;
+      syncMarkPlaying();
+    }
   });
 
   fillVideoSelect();
@@ -164,9 +243,12 @@ export async function renderEditor(root, clipId) {
   });
   previewBtn.addEventListener("click", async () => {
     if (draft.end <= draft.start) {
-      status.textContent = "Set End later than Start before previewing.";
+      status.textContent = "Fix End later than Start before previewing.";
       return;
     }
+    activeMark = null;
+    startPad.setPlaying(false);
+    endPad.setPlaying(false);
     previewing = !previewing;
     previewBtn.textContent = previewing ? "Stop Preview" : "Preview Loop";
     previewBtn.classList.toggle("btn-danger", previewing);
@@ -227,30 +309,24 @@ export async function renderEditor(root, clipId) {
         type: "button",
         class: "btn btn-primary",
         text: "Set Start",
-        onClick: () => setStart(video.currentTime || 0),
+        onClick: () => {
+          setStart(video.currentTime || 0);
+          status.textContent = `Start fixed at ${draft.start.toFixed(1)}s`;
+        },
       }),
       el("button", {
         type: "button",
         class: "btn btn-primary",
         text: "Set End",
-        onClick: () => setEnd(video.currentTime || 0),
+        onClick: () => {
+          setEnd(video.currentTime || 0);
+          status.textContent = `End fixed at ${draft.end.toFixed(1)}s`;
+        },
       }),
       previewBtn,
     ]),
-    el("div", { class: "settings-row" }, [
-      el("div", { class: "settings-label" }, [
-        el("strong", { text: "Start" }),
-        el("span", { class: "muted", text: "seconds, 0.1 step" }),
-      ]),
-      startStepper,
-    ]),
-    el("div", { class: "settings-row" }, [
-      el("div", { class: "settings-label" }, [
-        el("strong", { text: "End" }),
-        el("span", { class: "muted", text: "seconds, 0.1 step" }),
-      ]),
-      endStepper,
-    ]),
+    startPad,
+    endPad,
     el("label", { class: "field-label", text: "Video" }),
     videoSelect,
     el("label", { class: "btn btn-secondary btn-block file-btn" }, [
