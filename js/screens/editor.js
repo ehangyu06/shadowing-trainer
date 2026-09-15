@@ -3,7 +3,7 @@ import { loadVideos, uploadVideo } from "../videoList.js";
 import { bindPickedFile, resolveVideoUrl } from "../videoSource.js";
 import { createLoopPlayer, setVideoSource } from "../loopPlayer.js";
 import { formatClock, formatDuration, roundTenth, clamp } from "../time.js";
-import { el, timeMarkPad, confirmAction } from "../ui.js";
+import { el, seekFixPad, confirmAction } from "../ui.js";
 
 export async function renderEditor(root, clipId) {
   const videos = await loadVideos();
@@ -25,7 +25,6 @@ export async function renderEditor(root, clipId) {
   let duration = 0;
   let previewing = false;
   let player = null;
-  let activeMark = null;
 
   root.replaceChildren();
 
@@ -81,6 +80,12 @@ export async function renderEditor(root, clipId) {
     rangeEl.textContent = `Start: ${formatClock(draft.start)}   End: ${formatClock(draft.end)}   Duration: ${formatDuration(len)}`;
   }
 
+  function refreshPlayButtons() {
+    const playing = !video.paused;
+    startPad.setPlaying(playing);
+    endPad.setPlaying(playing);
+  }
+
   function stopPreviewMode() {
     if (!previewing) return;
     previewing = false;
@@ -89,64 +94,41 @@ export async function renderEditor(root, clipId) {
     player?.disable();
   }
 
-  function syncMarkPlaying() {
-    const playing = !video.paused && !previewing;
-    if (activeMark === "start") {
-      startPad.setPlaying(playing);
-      endPad.setPlaying(false);
-    } else if (activeMark === "end") {
-      endPad.setPlaying(playing);
-      startPad.setPlaying(false);
+  function currentSafeTime() {
+    return clamp(roundTenth(video.currentTime || 0), 0, duration > 0 ? duration : Number.POSITIVE_INFINITY);
+  }
+
+  function nudgePlayhead(delta) {
+    stopPreviewMode();
+    const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
+    const next = clamp(roundTenth((video.currentTime || 0) + delta), 0, max);
+    try {
+      video.currentTime = next;
+    } catch {
+      status.textContent = "Video is not ready yet.";
+      return;
+    }
+    currentTimeEl.textContent = `Current: ${formatClock(next)} (${next.toFixed(1)}s)`;
+    status.textContent = `Moved to ${next.toFixed(1)}s`;
+  }
+
+  async function togglePlayPause() {
+    stopPreviewMode();
+    if (video.paused) {
+      try {
+        await video.play();
+      } catch {
+        status.textContent = "Could not play. Tap the video play button once, then try again.";
+      }
     } else {
-      startPad.setPlaying(false);
-      endPad.setPlaying(false);
-    }
-  }
-
-  async function playFromMark(which, mark, currentlyPlaying) {
-    stopPreviewMode();
-    if (currentlyPlaying) {
       video.pause();
-      activeMark = null;
-      syncMarkPlaying();
-      return false;
     }
-    activeMark = which;
-    const t = clamp(roundTenth(mark), 0, duration > 0 ? duration : mark);
-    try {
-      video.currentTime = t;
-    } catch {
-      /* metadata may not be ready */
-    }
-    try {
-      await video.play();
-      status.textContent = `${which === "start" ? "Start" : "End"} preview from ${t.toFixed(1)}s — tap the center button again to stop.`;
-      syncMarkPlaying();
-      return true;
-    } catch {
-      status.textContent = "Tap Play on the video once, then try again.";
-      activeMark = null;
-      syncMarkPlaying();
-      return false;
-    }
-  }
-
-  function seekToMark(mark) {
-    stopPreviewMode();
-    activeMark = null;
-    video.pause();
-    try {
-      video.currentTime = clamp(roundTenth(mark), 0, duration > 0 ? duration : mark);
-    } catch {
-      /* ignore */
-    }
-    syncMarkPlaying();
+    refreshPlayButtons();
   }
 
   function setStart(value) {
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     draft.start = clamp(roundTenth(value), 0, max);
-    startPad.setValue(draft.start);
     refreshRange();
     if (player) player.setRange(draft.start, draft.end);
   }
@@ -154,39 +136,32 @@ export async function renderEditor(root, clipId) {
   function setEnd(value) {
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     draft.end = clamp(roundTenth(value), 0, max);
-    endPad.setValue(draft.end);
     refreshRange();
     if (player) player.setRange(draft.start, draft.end);
   }
 
-  const startPad = timeMarkPad({
+  function fixStart() {
+    setStart(currentSafeTime());
+    status.textContent = `Start fixed at ${draft.start.toFixed(1)}s`;
+  }
+
+  function fixEnd() {
+    setEnd(currentSafeTime());
+    status.textContent = `End fixed at ${draft.end.toFixed(1)}s`;
+  }
+
+  const startPad = seekFixPad({
     label: "Start",
-    value: draft.start,
-    onAdjust: (mark) => {
-      seekToMark(mark);
-      status.textContent = `Start candidate ${mark.toFixed(1)}s — Fix when it looks right.`;
-    },
-    onTogglePlay: (mark, playing) => playFromMark("start", mark, playing),
-    onFix: (mark) => {
-      setStart(mark);
-      seekToMark(draft.start);
-      status.textContent = `Start fixed at ${draft.start.toFixed(1)}s`;
-    },
+    onNudge: nudgePlayhead,
+    onTogglePlay: togglePlayPause,
+    onFix: fixStart,
   });
 
-  const endPad = timeMarkPad({
+  const endPad = seekFixPad({
     label: "End",
-    value: draft.end,
-    onAdjust: (mark) => {
-      seekToMark(mark);
-      status.textContent = `End candidate ${mark.toFixed(1)}s — Fix when it looks right.`;
-    },
-    onTogglePlay: (mark, playing) => playFromMark("end", mark, playing),
-    onFix: (mark) => {
-      setEnd(mark);
-      seekToMark(draft.end);
-      status.textContent = `End fixed at ${draft.end.toFixed(1)}s`;
-    },
+    onNudge: nudgePlayhead,
+    onTogglePlay: togglePlayPause,
+    onFix: fixEnd,
   });
 
   function attachPlayer() {
@@ -211,8 +186,6 @@ export async function renderEditor(root, clipId) {
 
   video.addEventListener("loadedmetadata", () => {
     duration = video.duration || 0;
-    startPad.setMax(duration || 24 * 60 * 60);
-    endPad.setMax(duration || 24 * 60 * 60);
     if (isNew && draft.end <= draft.start) {
       setEnd(duration);
     }
@@ -221,13 +194,8 @@ export async function renderEditor(root, clipId) {
   video.addEventListener("timeupdate", () => {
     currentTimeEl.textContent = `Current: ${formatClock(video.currentTime)} (${roundTenth(video.currentTime).toFixed(1)}s)`;
   });
-  video.addEventListener("play", syncMarkPlaying);
-  video.addEventListener("pause", () => {
-    if (!previewing) {
-      activeMark = null;
-      syncMarkPlaying();
-    }
-  });
+  video.addEventListener("play", refreshPlayButtons);
+  video.addEventListener("pause", refreshPlayButtons);
 
   fillVideoSelect();
   videoSelect.addEventListener("change", () => {
@@ -246,9 +214,6 @@ export async function renderEditor(root, clipId) {
       status.textContent = "Fix End later than Start before previewing.";
       return;
     }
-    activeMark = null;
-    startPad.setPlaying(false);
-    endPad.setPlaying(false);
     previewing = !previewing;
     previewBtn.textContent = previewing ? "Stop Preview" : "Preview Loop";
     previewBtn.classList.toggle("btn-danger", previewing);
@@ -269,6 +234,7 @@ export async function renderEditor(root, clipId) {
       player.disable();
       video.pause();
     }
+    refreshPlayButtons();
   });
 
   const fileInput = el("input", {
@@ -296,85 +262,86 @@ export async function renderEditor(root, clipId) {
     status.textContent = `Linked ${file.name} to ${videoId}`;
   });
 
-  const screen = el("section", { class: "screen editor-screen" }, [
-    el("header", { class: "topbar" }, [
-      el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
-      el("a", { class: "btn btn-ghost", href: "#/", text: "Library" }),
-    ]),
+  const sticky = el("div", { class: "editor-sticky" }, [
     el("div", { class: "video-shell" }, [video]),
     currentTimeEl,
     rangeEl,
-    el("div", { class: "btn-grid" }, [
+    el("div", { class: "btn-grid editor-set-row" }, [
       el("button", {
         type: "button",
         class: "btn btn-primary",
         text: "Set Start",
-        onClick: () => {
-          setStart(video.currentTime || 0);
-          status.textContent = `Start fixed at ${draft.start.toFixed(1)}s`;
-        },
+        onClick: fixStart,
       }),
       el("button", {
         type: "button",
         class: "btn btn-primary",
         text: "Set End",
-        onClick: () => {
-          setEnd(video.currentTime || 0);
-          status.textContent = `End fixed at ${draft.end.toFixed(1)}s`;
-        },
+        onClick: fixEnd,
       }),
+    ]),
+  ]);
+
+  const screen = el("section", { class: "screen editor-screen" }, [
+    el("header", { class: "topbar" }, [
+      el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
+      el("a", { class: "btn btn-ghost", href: "#/", text: "Library" }),
+    ]),
+    sticky,
+    el("div", { class: "editor-body" }, [
       previewBtn,
-    ]),
-    startPad,
-    endPad,
-    el("label", { class: "field-label", text: "Video" }),
-    videoSelect,
-    el("label", { class: "btn btn-secondary btn-block file-btn" }, [
-      "Select Video File",
-      fileInput,
-    ]),
-    el("label", { class: "field-label", text: "English subtitle" }),
-    englishInput,
-    el("label", { class: "field-label", text: "한글 자막" }),
-    koreanInput,
-    el("div", { class: "stack-actions" }, [
-      el("button", {
-        type: "button",
-        class: "btn btn-primary btn-block",
-        text: "Save Clip",
-        onClick: async () => {
-          draft.english = englishInput.value.trim();
-          draft.korean = koreanInput.value.trim();
-          if (!draft.video_id) {
-            status.textContent = "Choose or select a video first.";
-            return;
-          }
-          if (draft.end <= draft.start) {
-            status.textContent = "End must be later than Start.";
-            return;
-          }
-          await upsertClip(draft);
-          status.textContent = "Clip saved.";
-          location.hash = "#/";
-        },
-      }),
-      !isNew &&
+      startPad,
+      endPad,
+      el("label", { class: "field-label", text: "Video" }),
+      videoSelect,
+      el("label", { class: "btn btn-secondary btn-block file-btn" }, [
+        "Select Video File",
+        fileInput,
+      ]),
+      el("label", { class: "field-label", text: "English subtitle" }),
+      englishInput,
+      el("label", { class: "field-label", text: "한글 자막" }),
+      koreanInput,
+      el("div", { class: "stack-actions" }, [
         el("button", {
           type: "button",
-          class: "btn btn-ghost btn-block",
-          text: "Delete Clip",
+          class: "btn btn-primary btn-block",
+          text: "Save Clip",
           onClick: async () => {
-            if (!confirmAction("Delete this clip?")) return;
-            await deleteClip(draft.id);
+            draft.english = englishInput.value.trim();
+            draft.korean = koreanInput.value.trim();
+            if (!draft.video_id) {
+              status.textContent = "Choose or select a video first.";
+              return;
+            }
+            if (draft.end <= draft.start) {
+              status.textContent = "End must be later than Start.";
+              return;
+            }
+            await upsertClip(draft);
+            status.textContent = "Clip saved.";
             location.hash = "#/";
           },
         }),
-      el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Cancel" }),
+        !isNew &&
+          el("button", {
+            type: "button",
+            class: "btn btn-ghost btn-block",
+            text: "Delete Clip",
+            onClick: async () => {
+              if (!confirmAction("Delete this clip?")) return;
+              await deleteClip(draft.id);
+              location.hash = "#/";
+            },
+          }),
+        el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Cancel" }),
+      ]),
+      status,
     ]),
-    status,
   ]);
 
   refreshRange();
+  refreshPlayButtons();
   root.append(screen);
   if (draft.video_id) loadSelectedVideo();
   attachPlayer();

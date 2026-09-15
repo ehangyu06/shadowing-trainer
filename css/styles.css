@@ -341,6 +341,40 @@ textarea {
   letter-spacing: -0.02em;
 }
 
+.editor-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--bg);
+  padding: 0 0 10px;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.editor-sticky .time-readout {
+  margin: 6px 0;
+  font-size: 0.98rem;
+}
+
+.editor-sticky .editor-video {
+  max-height: 34vh;
+  min-height: 160px;
+}
+
+.editor-set-row {
+  margin-top: 4px;
+}
+
+.editor-body {
+  padding-bottom: 24px;
+}
+
+.editor-body > .btn {
+  width: 100%;
+  margin: 8px 0 4px;
+}
+
 .chip-row,
 .speed-row,
 .phase-row {
@@ -555,8 +589,8 @@ textarea {
   }
 }
 
-.editor-screen .btn-grid .btn:last-of-type {
-  grid-column: 1 / -1;
+.editor-screen .editor-set-row .btn:last-of-type {
+  grid-column: auto;
 }
 
 @media (max-width: 640px) {

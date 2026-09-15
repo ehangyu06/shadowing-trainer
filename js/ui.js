@@ -69,85 +69,38 @@ export function confirmAction(message) {
 }
 
 /**
- * Editor control: −0.1 | play/pause at mark | +0.1 | Fix
+ * Editor control: −0.1 | Play/Pause | +0.1 | Fix
+ * Nudges the live video playhead; Fix commits the current time.
  */
-export function timeMarkPad({
-  label,
-  value,
-  step = 0.1,
-  min = 0,
-  max = 24 * 60 * 60,
-  onAdjust,
-  onTogglePlay,
-  onFix,
-}) {
-  let mark = Number(value) || 0;
-  let playing = false;
-
+export function seekFixPad({ label, step = 0.1, onNudge, onTogglePlay, onFix }) {
   const wrap = el("div", { class: "mark-pad" });
   const head = el("div", { class: "settings-label" }, [
     el("strong", { text: label }),
-    el("span", { class: "muted", text: "−0.1 / play / +0.1 → Fix" }),
+    el("span", { class: "muted", text: "−0.1 / Play·Pause / +0.1 → Fix" }),
   ]);
   const row = el("div", { class: "mark-pad-row" });
   const minus = el("button", { type: "button", class: "btn btn-primary mark-step", text: "−0.1" });
-  const playBtn = el("button", { type: "button", class: "btn btn-secondary mark-play" });
+  const playBtn = el("button", {
+    type: "button",
+    class: "btn btn-secondary mark-play",
+    text: "▶ Play",
+  });
   const plus = el("button", { type: "button", class: "btn btn-primary mark-step", text: "+0.1" });
   const fix = el("button", { type: "button", class: "btn btn-primary mark-fix", text: "Fix" });
 
-  function formatMark() {
-    return mark.toFixed(1);
-  }
-
-  function refreshPlayLabel() {
-    playBtn.textContent = playing ? `⏸ ${formatMark()}s` : `▶ ${formatMark()}s`;
-    playBtn.classList.toggle("btn-danger", playing);
+  function setPlaying(playing) {
+    playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
+    playBtn.classList.toggle("btn-danger", Boolean(playing));
     playBtn.classList.toggle("btn-secondary", !playing);
   }
 
-  function setMark(next, announce = true) {
-    let n = Number(next);
-    if (!Number.isFinite(n)) n = mark;
-    n = Math.min(max, Math.max(min, Math.round(n * 10) / 10));
-    mark = n;
-    refreshPlayLabel();
-    if (announce) onAdjust?.(mark);
-    return mark;
-  }
+  minus.addEventListener("click", () => onNudge?.(-step));
+  plus.addEventListener("click", () => onNudge?.(step));
+  playBtn.addEventListener("click", () => onTogglePlay?.());
+  fix.addEventListener("click", () => onFix?.());
 
-  minus.addEventListener("click", () => {
-    playing = false;
-    refreshPlayLabel();
-    setMark(mark - step);
-  });
-  plus.addEventListener("click", () => {
-    playing = false;
-    refreshPlayLabel();
-    setMark(mark + step);
-  });
-  playBtn.addEventListener("click", async () => {
-    const nextPlaying = await onTogglePlay?.(mark, playing);
-    playing = Boolean(nextPlaying);
-    refreshPlayLabel();
-  });
-  fix.addEventListener("click", () => {
-    playing = false;
-    refreshPlayLabel();
-    onFix?.(mark);
-  });
-
-  refreshPlayLabel();
   row.append(minus, playBtn, plus, fix);
   wrap.append(head, row);
-  wrap.setValue = (next) => setMark(next, false);
-  wrap.getValue = () => mark;
-  wrap.setPlaying = (flag) => {
-    playing = Boolean(flag);
-    refreshPlayLabel();
-  };
-  wrap.setMax = (nextMax) => {
-    max = nextMax;
-    setMark(mark, false);
-  };
+  wrap.setPlaying = setPlaying;
   return wrap;
 }
