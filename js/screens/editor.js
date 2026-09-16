@@ -2,7 +2,7 @@ import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipS
 import { loadVideos, uploadVideo } from "../videoList.js";
 import { bindPickedFile, resolveVideoUrl } from "../videoSource.js";
 import { createLoopPlayer, setVideoSource } from "../loopPlayer.js";
-import { formatClock, formatDuration, roundTenth, clamp } from "../time.js";
+import { formatClock, roundTenth, clamp } from "../time.js";
 import { el, seekFixPad, confirmAction } from "../ui.js";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
