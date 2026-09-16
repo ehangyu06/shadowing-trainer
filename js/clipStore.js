@@ -1,8 +1,12 @@
-import { CLIPS_KEY } from "./constants.js?v=20260916i";
-import { roundTenth } from "./time.js?v=20260916i";
-import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916i";
-import { videoIdFromName } from "./videoList.js?v=20260916i";
-import { rememberClipTitle } from "./titleStore.js?v=20260916i";
+import {
+  CLIPS_KEY,
+  CLIPS_DELETED_KEY,
+  LIBRARY_CLEANUP_KEY,
+} from "./constants.js?v=20260916j";
+import { roundTenth } from "./time.js?v=20260916j";
+import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916j";
+import { videoIdFromName, removeVideos } from "./videoList.js?v=20260916j";
+import { rememberClipTitle } from "./titleStore.js?v=20260916j";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
@@ -38,11 +42,62 @@ function writeLocal(clips) {
   localStorage.setItem(CLIPS_KEY, JSON.stringify(clips));
 }
 
-function mergeById(seed, local) {
-  const map = new Map();
-  for (const clip of seed) map.set(String(clip.id), clip);
-  for (const clip of local) map.set(String(clip.id), clip);
-  return [...map.values()].sort((a, b) => Number(a.id) - Number(b.id));
+function readDeletedIds() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CLIPS_DELETED_KEY) || "[]");
+    return new Set((Array.isArray(raw) ? raw : []).map((id) => String(id)));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDeletedIds(ids) {
+  localStorage.setItem(CLIPS_DELETED_KEY, JSON.stringify([...ids]));
+}
+
+function markDeleted(ids) {
+  const deleted = readDeletedIds();
+  for (const id of [].concat(ids)) deleted.add(String(id));
+  writeDeletedIds(deleted);
+  return deleted;
+}
+
+function unmarkDeleted(id) {
+  const deleted = readDeletedIds();
+  deleted.delete(String(id));
+  writeDeletedIds(deleted);
+}
+
+function sortClips(clips) {
+  return [...clips].sort((a, b) => Number(a.id) - Number(b.id));
+}
+
+/** One-time: drop old demo / requested leftover videos from this device. */
+function runLibraryCleanup(clips) {
+  try {
+    if (localStorage.getItem(LIBRARY_CLEANUP_KEY) === "1") {
+      return clips;
+    }
+  } catch {
+    /* continue */
+  }
+
+  const purgeVideos = new Set(["sample", "img_1136", "img_1137"]);
+  const kept = [];
+  const removedIds = [];
+  for (const clip of clips) {
+    if (purgeVideos.has(String(clip.video_id))) removedIds.push(clip.id);
+    else kept.push(clip);
+  }
+  if (removedIds.length) markDeleted(removedIds);
+  removeVideos([...purgeVideos]);
+
+  try {
+    localStorage.setItem(LIBRARY_CLEANUP_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+  return kept;
 }
 
 export async function loadClips() {
@@ -50,24 +105,42 @@ export async function loadClips() {
   const seed = normalizeClips(
     fromApi || (await fetchJsonIfOk(resourceUrl("data/clips.json"))) || []
   );
+  const deleted = readDeletedIds();
   const local = readLocal();
+
   if (fromApi) {
-    writeLocal(seed);
-    return seed;
+    const next = sortClips(seed.filter((clip) => !deleted.has(String(clip.id))));
+    const cleaned = runLibraryCleanup(next);
+    writeLocal(cleaned);
+    return cleaned;
   }
+
   if (!local) {
-    writeLocal(seed);
-    return seed;
+    const next = sortClips(seed.filter((clip) => !deleted.has(String(clip.id))));
+    const cleaned = runLibraryCleanup(next);
+    writeLocal(cleaned);
+    return cleaned;
   }
-  const merged = mergeById(seed, local);
-  writeLocal(merged);
-  return merged;
+
+  // Local is source of truth. Seed may only add brand-new ids that were never deleted.
+  const byId = new Map(local.map((clip) => [String(clip.id), clip]));
+  for (const clip of seed) {
+    const id = String(clip.id);
+    if (deleted.has(id) || byId.has(id)) continue;
+    byId.set(id, clip);
+  }
+  const next = sortClips(
+    [...byId.values()].filter((clip) => !deleted.has(String(clip.id)))
+  );
+  const cleaned = runLibraryCleanup(next);
+  writeLocal(cleaned);
+  return cleaned;
 }
 
 export const getClips = loadClips;
 
 export async function saveClips(clips) {
-  const next = normalizeClips(clips);
+  const next = normalizeClips(clips).filter((clip) => !readDeletedIds().has(String(clip.id)));
   writeLocal(next);
   try {
     await fetch(resourceUrl("api/clips"), {
@@ -93,6 +166,7 @@ export function nextClipId(clips) {
 export async function upsertClip(partial) {
   const clips = await loadClips();
   const id = Number(partial.id) || nextClipId(clips);
+  unmarkDeleted(id);
   const index = clips.findIndex((item) => item.id === id);
   const prev = index >= 0 ? clips[index] : null;
   const now = Date.now();
@@ -113,9 +187,20 @@ export const saveClip = upsertClip;
 export const updateClip = upsertClip;
 
 export async function deleteClip(id) {
-  const clips = (await loadClips()).filter((clip) => String(clip.id) !== String(id));
+  markDeleted(id);
+  const local = readLocal() || [];
+  const clips = local.filter((clip) => String(clip.id) !== String(id));
   await saveClips(clips);
   return clips;
+}
+
+export async function deleteClipsByVideoId(videoId) {
+  const clips = await loadClips();
+  const removed = clips.filter((clip) => String(clip.video_id) === String(videoId));
+  if (removed.length) markDeleted(removed.map((clip) => clip.id));
+  const kept = clips.filter((clip) => String(clip.video_id) !== String(videoId));
+  await saveClips(kept);
+  return kept;
 }
 
 export function neighborIds(clips, id) {

@@ -1,4 +1,6 @@
-import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js?v=20260916i";
+import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js?v=20260916j";
+import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260916j";
+import { deleteMediaBlob } from "./mediaStore.js?v=20260916j";
 
 export const VIDEO_CATALOG_KEY = "shadowing-trainer:videos";
 
@@ -72,6 +74,24 @@ export async function upsertVideo(partial) {
   else videos.push(video);
   writeLocalCatalog(videos);
   return video;
+}
+
+export function removeVideos(videoIds) {
+  const ids = new Set([].concat(videoIds || []).map((id) => String(id)).filter(Boolean));
+  if (!ids.size) return [];
+  const videos = readLocalCatalog().filter((item) => !ids.has(String(item.id)));
+  writeLocalCatalog(videos);
+  try {
+    const bindings = JSON.parse(localStorage.getItem(VIDEO_BINDINGS_KEY) || "{}") || {};
+    for (const id of ids) delete bindings[id];
+    localStorage.setItem(VIDEO_BINDINGS_KEY, JSON.stringify(bindings));
+  } catch {
+    /* ignore */
+  }
+  for (const id of ids) {
+    deleteMediaBlob(id).catch(() => {});
+  }
+  return videos;
 }
 
 export async function uploadVideo(file) {

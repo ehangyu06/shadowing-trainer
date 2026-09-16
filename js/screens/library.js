@@ -1,20 +1,20 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916i";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916i";
-import { loadVideos } from "../videoList.js?v=20260916i";
+import { ASSET_VERSION } from "../constants.js?v=20260916j";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916j";
+import { loadVideos } from "../videoList.js?v=20260916j";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916i";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916i";
-import { el, confirmAction } from "../ui.js?v=20260916i";
-import { formatDuration } from "../time.js?v=20260916i";
+} from "../videoSource.js?v=20260916j";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916j";
+import { el, confirmAction } from "../ui.js?v=20260916j";
+import { formatDuration } from "../time.js?v=20260916j";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916i";
+} from "../navMemory.js?v=20260916j";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -144,19 +144,22 @@ export async function renderLibrary(root) {
       ]);
       const actions = el("div", { class: "clip-actions" }, [
         el("a", { class: "btn btn-secondary", href: `#/edit/${clip.id}`, text: "Edit Clip" }),
-        el(
-          "button",
-          {
-            type: "button",
-            class: "btn btn-ghost",
-            text: "Delete",
-            onClick: async () => {
-              if (!confirmAction("Delete this clip?")) return;
+        el("button", {
+          type: "button",
+          class: "btn btn-ghost",
+          text: "Delete",
+          onClick: async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!confirmAction("Delete this clip?")) return;
+            try {
               await deleteClip(clip.id);
-              renderLibrary(root);
-            },
-          }
-        ),
+              await renderLibrary(root);
+            } catch (err) {
+              alert(err.message || "Could not delete clip.");
+            }
+          },
+        }),
       ]);
       card.append(open, actions);
       list.append(card);
