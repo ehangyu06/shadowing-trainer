@@ -1,4 +1,4 @@
-import { CLIP_TITLES_KEY } from "./constants.js?v=20260916j";
+import { CLIP_TITLES_KEY } from "./constants.js?v=20260916k";
 
 function uniqueKeepOrder(items) {
   const seen = new Set();
@@ -38,13 +38,17 @@ export function collectClipTitles(clips = []) {
   return uniqueKeepOrder([...readStoredTitles(), ...fromClips]);
 }
 
-function nextNumberedVariant(title, known) {
-  const base = String(title || "")
+function titleBase(title) {
+  return String(title || "")
     .trim()
     .replace(/\s+\d+$/, "")
     .trim();
+}
+
+function nextNumberedVariant(title, usedLower) {
+  const base = titleBase(title);
   if (!base) return "";
-  const used = new Set(known.map((t) => t.toLowerCase()));
+  const used = usedLower instanceof Set ? usedLower : new Set(usedLower || []);
   for (let n = 2; n <= 99; n += 1) {
     const candidate = `${base} ${n}`;
     if (!used.has(candidate.toLowerCase())) return candidate;
@@ -53,23 +57,59 @@ function nextNumberedVariant(title, known) {
 }
 
 /**
- * Prefix/includes match + numbered follow-ups (e.g. "아쿠아리움… 2").
+ * Suggest titles for the clip being edited.
+ * - Titles already used by OTHER clips are not offered as-is.
+ * - This clip's own original title may appear (so it can keep it).
+ * - If another clip owns a matching name, only the next free "name 2" style option is offered.
  */
-export function suggestClipTitles(input, clips = []) {
+export function suggestClipTitles(input, clips = [], options = {}) {
+  const currentId =
+    options.currentClipId != null && options.currentClipId !== ""
+      ? String(options.currentClipId)
+      : null;
+  const ownTitle = String(options.currentTitle || "").trim();
+  const ownLower = ownTitle.toLowerCase();
+
+  const takenByOthers = new Set();
+  for (const clip of clips || []) {
+    if (currentId && String(clip.id) === currentId) continue;
+    const title = String(clip.title || "").trim();
+    if (title) takenByOthers.add(title.toLowerCase());
+  }
+
   const history = collectClipTitles(clips);
+  const pool = uniqueKeepOrder([ownTitle, ...history]);
   const q = String(input || "").trim().toLowerCase();
-  const matched = history.filter((title) => {
+  const matched = pool.filter((title) => {
     if (!q) return true;
     const lower = title.toLowerCase();
     return lower.startsWith(q) || lower.includes(q);
   });
+
   const out = [];
   for (const title of matched) {
+    const lower = title.toLowerCase();
+    const isOwn = Boolean(ownLower) && lower === ownLower;
+    const taken = takenByOthers.has(lower);
+
+    if (taken && !isOwn) {
+      const numbered = nextNumberedVariant(title, takenByOthers);
+      if (numbered) out.push(numbered);
+      continue;
+    }
+
     out.push(title);
-    const numbered = nextNumberedVariant(title, history);
-    if (numbered) out.push(numbered);
   }
-  if (!q && !out.length) return history.slice(0, 12);
+
+  if (!q && !out.length) {
+    return pool
+      .filter((title) => {
+        const lower = title.toLowerCase();
+        return lower === ownLower || !takenByOthers.has(lower);
+      })
+      .slice(0, 12);
+  }
+
   return uniqueKeepOrder(out).slice(0, 12);
 }
 

@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916j";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260916j";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916j";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916j";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916j";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916j";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916k";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260916k";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916k";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916k";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916k";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916k";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916j";
-import { rememberReturnToLibrary } from "../navMemory.js?v=20260916j";
+} from "../titleStore.js?v=20260916k";
+import { rememberReturnToLibrary } from "../navMemory.js?v=20260916k";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -120,7 +120,7 @@ export async function renderEditor(root, clipId) {
   titleInput = el("input", {
     type: "text",
     class: "text-input title-input",
-    placeholder: "비디오 이름 (예: 아쿠아리움이 문을 닫을때)",
+    placeholder: "비디오 이름",
     autocomplete: "off",
     autocorrect: "off",
     spellcheck: "false",
@@ -133,7 +133,10 @@ export async function renderEditor(root, clipId) {
   }
 
   function showTitleSuggest() {
-    const suggestions = suggestClipTitles(titleInput.value, clips);
+    const suggestions = suggestClipTitles(titleInput.value, clips, {
+      currentClipId: draft.id,
+      currentTitle: existing?.title || "",
+    });
     titleSuggest.replaceChildren();
     if (!suggestions.length) {
       hideTitleSuggest();
@@ -185,26 +188,6 @@ export async function renderEditor(root, clipId) {
     placeholder: "한글 자막",
   });
   koreanInput.value = draft.korean;
-
-  const videoSelect = el("select", { class: "select-input" });
-
-  function fillVideoSelect() {
-    videoSelect.replaceChildren();
-    if (!videos.length) {
-      videoSelect.append(el("option", { value: "", text: "No videos yet" }));
-      return;
-    }
-    for (const item of videos) {
-      const opt = el("option", { value: item.id, text: `${item.title} (${item.id})` });
-      if (item.id === draft.video_id) opt.selected = true;
-      videoSelect.append(opt);
-    }
-    if (draft.video_id && !videos.some((item) => item.id === draft.video_id)) {
-      videoSelect.append(
-        el("option", { value: draft.video_id, text: `${draft.video_id} (missing)`, selected: true })
-      );
-    }
-  }
 
   function refreshConfirmedBoard() {
     const ready = startFixed && endFixed && draft.end > draft.start;
@@ -463,13 +446,6 @@ export async function renderEditor(root, clipId) {
   video.addEventListener("play", refreshPlayButtons);
   video.addEventListener("pause", refreshPlayButtons);
 
-  fillVideoSelect();
-  videoSelect.addEventListener("change", async () => {
-    draft.video_id = videoSelect.value;
-    await loadSelectedVideo();
-    attachPlayer();
-  });
-
   const previewBtn = el("button", {
     type: "button",
     class: "btn btn-secondary btn-block editor-rail-btn",
@@ -523,8 +499,6 @@ export async function renderEditor(root, clipId) {
       draft.video_id = videoId;
       const fresh = await loadVideos();
       videos.splice(0, videos.length, ...fresh);
-      fillVideoSelect();
-      videoSelect.value = draft.video_id;
       setVideoSource(video, url);
       await waitForVideoReady(video);
       duration = video.duration || 0;
@@ -669,6 +643,7 @@ export async function renderEditor(root, clipId) {
         onClick: fixEnd,
       }),
     ]),
+    titleField,
   ]);
 
   const rail = el("aside", { class: "editor-rail" }, [
@@ -700,11 +675,8 @@ export async function renderEditor(root, clipId) {
       sticky,
     ]),
     el("div", { class: "editor-body", id: "editor-scroll" }, [
-      titleField,
       startPad,
       endPad,
-      el("label", { class: "field-label", text: "Video" }),
-      videoSelect,
       el("label", { class: "field-label", text: "English subtitle" }),
       englishInput,
       el("label", { class: "field-label", text: "한글 자막" }),

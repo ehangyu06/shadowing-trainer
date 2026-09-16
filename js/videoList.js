@@ -1,6 +1,6 @@
-import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js?v=20260916j";
-import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260916j";
-import { deleteMediaBlob } from "./mediaStore.js?v=20260916j";
+import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js?v=20260916k";
+import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260916k";
+import { deleteMediaBlob } from "./mediaStore.js?v=20260916k";
 
 export const VIDEO_CATALOG_KEY = "shadowing-trainer:videos";
 

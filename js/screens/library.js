@@ -1,20 +1,20 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916j";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916j";
-import { loadVideos } from "../videoList.js?v=20260916j";
+import { ASSET_VERSION } from "../constants.js?v=20260916k";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916k";
+import { loadVideos } from "../videoList.js?v=20260916k";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916j";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916j";
-import { el, confirmAction } from "../ui.js?v=20260916j";
-import { formatDuration } from "../time.js?v=20260916j";
+} from "../videoSource.js?v=20260916k";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916k";
+import { el, confirmAction } from "../ui.js?v=20260916k";
+import { formatDuration } from "../time.js?v=20260916k";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916j";
+} from "../navMemory.js?v=20260916k";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
