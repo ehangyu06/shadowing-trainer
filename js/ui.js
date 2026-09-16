@@ -153,12 +153,12 @@ export function seekFixPad({
   });
   fix.addEventListener("click", (event) => {
     event.stopPropagation();
-    activate();
+    // Do not activate() first — End pad activate used to seek to Start,
+    // which made Fix capture the start time instead of the playhead.
     onFix?.();
   });
   undo.addEventListener("click", (event) => {
     event.stopPropagation();
-    activate();
     onUndo?.();
   });
 

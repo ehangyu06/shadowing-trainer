@@ -22,6 +22,10 @@ function openDb() {
  */
 export async function saveMediaBlob(videoId, blob, meta = {}) {
   if (!videoId || !blob) throw new Error("Missing video or file");
+  // Clone to a plain Blob so Safari keeps a durable copy after the file input clears.
+  const type = blob.type || meta.type || "video/mp4";
+  const durable =
+    blob instanceof Blob ? blob.slice(0, blob.size, type) : new Blob([blob], { type });
   const db = await openDb();
   try {
     await new Promise((resolve, reject) => {
@@ -31,10 +35,10 @@ export async function saveMediaBlob(videoId, blob, meta = {}) {
       tx.onabort = () => reject(tx.error || new Error("IndexedDB write aborted"));
       tx.objectStore(STORE).put({
         id: videoId,
-        blob,
+        blob: durable,
         filename: meta.filename || "",
-        size: blob.size || 0,
-        type: blob.type || meta.type || "",
+        size: durable.size || 0,
+        type,
         lastModified: meta.lastModified || 0,
         savedAt: Date.now(),
       });

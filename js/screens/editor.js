@@ -250,6 +250,10 @@ export async function renderEditor(root, clipId) {
     player?.disable();
     video.pause();
     const t = currentSafeTime();
+    if (!(t > draft.start)) {
+      status.textContent = `End must be later than Start (${draft.start.toFixed(1)}s). Now at ${t.toFixed(1)}s.`;
+      return;
+    }
     setEnd(t);
     endFixed = true;
     endPad.setState(`${t.toFixed(1)} → fix`, { fixed: true });
@@ -303,21 +307,7 @@ export async function renderEditor(root, clipId) {
 
   const endPad = seekFixPad({
     label: "End",
-    onActivate: () => {
-      setActiveMark("end");
-      // After Start is fixed, jump near the start so End editing is ready to play.
-      if (startFixed && video.paused) {
-        try {
-          const target =
-            draft.end > draft.start ? draft.start : Math.min(currentSafeTime(), duration || currentSafeTime());
-          if (Math.abs((video.currentTime || 0) - target) > 0.15) {
-            video.currentTime = target;
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-    },
+    onActivate: () => setActiveMark("end"),
     onNudge: nudgePlayhead,
     onTogglePlay: togglePlayPause,
     onFix: fixEnd,
@@ -339,7 +329,8 @@ export async function renderEditor(root, clipId) {
   }
 
   async function loadSelectedVideo() {
-    if (!draft.video_id) return;
+    if (!draft.video_id) return false;
+    status.textContent = `Opening ${draft.video_id}…`;
     const url = await resolveVideoUrl(draft.video_id);
     if (!url) {
       status.textContent = `Select a video file for ${draft.video_id}.`;
@@ -350,6 +341,16 @@ export async function renderEditor(root, clipId) {
       await waitForVideoReady(video);
       duration = video.duration || 0;
       if (isNew && draft.end <= draft.start) setEnd(duration);
+      const seekTo =
+        draft.start > 0 && draft.start < duration ? draft.start : 0;
+      try {
+        video.currentTime = seekTo;
+      } catch {
+        /* ignore */
+      }
+      currentTimeEl.textContent = `Current: ${formatClock(seekTo)} (${seekTo.toFixed(1)}s)`;
+      status.textContent = `Ready: ${draft.video_id} (${duration.toFixed(1)}s)`;
+      attachPlayer();
       return true;
     } catch (err) {
       status.textContent = err.message || "Could not open video.";
@@ -426,7 +427,7 @@ export async function renderEditor(root, clipId) {
     stopPreviewMode();
     video.pause();
     try {
-      const result = await bindPickedFile(file);
+      const result = await bindPickedFile(file, draft.video_id || undefined);
       const { videoId, url } = result;
       draft.video_id = videoId;
       const fresh = await loadVideos();
@@ -591,6 +592,10 @@ export async function renderEditor(root, clipId) {
   refreshConfirmedBoard();
   refreshPlayButtons();
   root.replaceChildren(screen);
-  if (draft.video_id) loadSelectedVideo();
   attachPlayer();
+  if (draft.video_id) {
+    loadSelectedVideo().catch(() => {
+      status.textContent = `Select a video file for ${draft.video_id}.`;
+    });
+  }
 }
