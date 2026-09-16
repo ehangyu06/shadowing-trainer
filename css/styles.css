@@ -354,6 +354,19 @@ textarea {
   padding: 16px;
 }
 
+.clip-list {
+  display: grid;
+  gap: 8px;
+}
+
+.clip-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
 .clip-card-focus {
   border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
   box-shadow: 0 0 0 1px rgba(76, 141, 255, 0.45), 0 8px 22px rgba(76, 141, 255, 0.18);
@@ -361,6 +374,8 @@ textarea {
 
 .clip-main {
   display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   color: inherit;
   text-decoration: none;
 }
@@ -368,24 +383,47 @@ textarea {
 .clip-kicker {
   color: var(--accent);
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
+  font-size: 1rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-english {
-  font-size: 1.2rem;
-  line-height: 1.4;
-  margin: 0 0 8px;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-korean,
 .clip-meta {
-  margin: 0 0 6px;
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .clip-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin-top: 0;
+  width: 84px;
+}
+
+.clip-action-btn {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 6px;
+  font-size: 0.85rem;
 }
 
 .settings-row {
@@ -987,14 +1025,16 @@ body.editor-lock #app {
     flex-direction: column;
   }
 
-  .topbar-actions,
-  .clip-actions {
+  .topbar-actions {
     width: 100%;
   }
 
-  .topbar-actions .btn,
-  .clip-actions .btn {
+  .topbar-actions .btn {
     flex: 1;
+  }
+
+  .clip-actions {
+    width: 76px;
   }
 
   .phase-btn {

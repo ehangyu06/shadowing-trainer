@@ -29,7 +29,7 @@ export const CLIP_TITLES_KEY = "shadowing-trainer:clip-titles";
 export const LAST_PLAYED_CLIP_KEY = "shadowing-trainer:last-played-clip";
 export const LIBRARY_FOCUS_CLIP_KEY = "shadowing-trainer:library-focus-clip";
 export const LIBRARY_CLEANUP_KEY = "shadowing-trainer:library-cleanup-v2";
-export const ASSET_VERSION = "20260916k";
+export const ASSET_VERSION = "20260916l";
 
 export const DEFAULT_PHASE_COUNTS = [3, 3, 3, 20, 20];
 export const DEFAULT_PLAYBACK_RATE = 1.0;

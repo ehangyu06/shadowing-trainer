@@ -1,20 +1,20 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916k";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916k";
-import { loadVideos } from "../videoList.js?v=20260916k";
+import { ASSET_VERSION } from "../constants.js?v=20260916l";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916l";
+import { loadVideos } from "../videoList.js?v=20260916l";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916k";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916k";
-import { el, confirmAction } from "../ui.js?v=20260916k";
-import { formatDuration } from "../time.js?v=20260916k";
+} from "../videoSource.js?v=20260916l";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916l";
+import { el, confirmAction } from "../ui.js?v=20260916l";
+import { formatDuration } from "../time.js?v=20260916l";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916k";
+} from "../navMemory.js?v=20260916l";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -124,14 +124,12 @@ export async function renderLibrary(root) {
       }
       const open = el("a", { class: "clip-main", href: `#/train/${clip.id}` }, [
         el("div", { class: "clip-kicker", text: clip.title || `Clip ${index + 1}` }),
-        el("p", {
-          class: "clip-english",
-          text: clip.english || "(No English subtitle)",
-        }),
-        el("p", {
-          class: "clip-korean muted",
-          text: clip.korean || "",
-        }),
+        clip.english
+          ? el("p", { class: "clip-english", text: clip.english })
+          : null,
+        clip.korean
+          ? el("p", { class: "clip-korean muted", text: clip.korean })
+          : null,
         el("p", {
           class: "clip-meta muted",
           text: (() => {
@@ -143,10 +141,10 @@ export async function renderLibrary(root) {
         }),
       ]);
       const actions = el("div", { class: "clip-actions" }, [
-        el("a", { class: "btn btn-secondary", href: `#/edit/${clip.id}`, text: "Edit Clip" }),
+        el("a", { class: "btn btn-secondary clip-action-btn", href: `#/edit/${clip.id}`, text: "Edit" }),
         el("button", {
           type: "button",
-          class: "btn btn-ghost",
+          class: "btn btn-ghost clip-action-btn",
           text: "Delete",
           onClick: async (event) => {
             event.preventDefault();
