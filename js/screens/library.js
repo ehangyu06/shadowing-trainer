@@ -1,15 +1,16 @@
-import { loadClips, deleteClip } from "../clipStore.js";
-import { loadVideos } from "../videoList.js";
+import { ASSET_VERSION } from "../constants.js?v=20260916f";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916f";
+import { loadVideos } from "../videoList.js?v=20260916f";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js";
-import { totalRepeats, loadSettings } from "../settingsStore.js";
-import { el, confirmAction } from "../ui.js";
-import { formatDuration } from "../time.js";
+} from "../videoSource.js?v=20260916f";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916f";
+import { el, confirmAction } from "../ui.js?v=20260916f";
+import { formatDuration } from "../time.js?v=20260916f";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -25,7 +26,7 @@ export async function renderLibrary(root) {
       el("h1", { text: "Shadowing Trainer" }),
       el("p", {
         class: "muted",
-        text: `Default session: ${settings.phases.join(" + ")} = ${total} loops`,
+        text: `Default session: ${settings.phases.join(" + ")} = ${total} loops · v${ASSET_VERSION}`,
       }),
     ]),
     el("div", { class: "topbar-actions" }, [

@@ -1,9 +1,9 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js";
-import { loadVideos, uploadVideo } from "../videoList.js";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js";
-import { formatClock, roundTenth, clamp } from "../time.js";
-import { el, seekFixPad, confirmAction } from "../ui.js";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916f";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260916f";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916f";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916f";
+import { formatClock, roundTenth, clamp } from "../time.js?v=20260916f";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916f";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
