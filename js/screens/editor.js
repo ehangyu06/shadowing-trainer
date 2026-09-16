@@ -178,6 +178,7 @@ export async function renderEditor(root, clipId) {
 
   function nudgePlayhead(delta) {
     stopPreviewMode();
+    player?.disable();
     video.pause();
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     const next = clamp(roundTenth((video.currentTime || 0) + delta), 0, max);
@@ -197,11 +198,18 @@ export async function renderEditor(root, clipId) {
 
   async function togglePlayPause() {
     stopPreviewMode();
-    if (video.paused) {
+    player?.disable();
+    const wasPaused = video.paused;
+    if (wasPaused) {
       try {
-        await video.play();
+        const playPromise = video.play();
+        if (playPromise && typeof playPromise.then === "function") {
+          await playPromise;
+        }
       } catch {
-        status.textContent = "Could not play. Tap the video play button once, then try again.";
+        status.textContent = "Could not play. Tap the video once, then press ▶ again.";
+        refreshPlayButtons();
+        return;
       }
     } else {
       video.pause();
@@ -226,6 +234,7 @@ export async function renderEditor(root, clipId) {
 
   function fixStart() {
     setActiveMark("start");
+    player?.disable();
     video.pause();
     const t = currentSafeTime();
     setStart(t);
@@ -238,6 +247,7 @@ export async function renderEditor(root, clipId) {
 
   function fixEnd() {
     setActiveMark("end");
+    player?.disable();
     video.pause();
     const t = currentSafeTime();
     setEnd(t);
@@ -248,20 +258,70 @@ export async function renderEditor(root, clipId) {
     refreshConfirmedBoard();
   }
 
+  function undoStart() {
+    setActiveMark("start");
+    player?.disable();
+    video.pause();
+    startFixed = false;
+    try {
+      video.currentTime = draft.start;
+    } catch {
+      /* ignore */
+    }
+    const t = currentSafeTime();
+    startPad.setState(`${t.toFixed(1)}s : pause`);
+    status.textContent = "Start unlocked — adjust again, then Fix.";
+    refreshPlayButtons();
+    refreshConfirmedBoard();
+  }
+
+  function undoEnd() {
+    setActiveMark("end");
+    player?.disable();
+    video.pause();
+    endFixed = false;
+    try {
+      video.currentTime = draft.end > draft.start ? draft.end : draft.start;
+    } catch {
+      /* ignore */
+    }
+    const t = currentSafeTime();
+    endPad.setState(`${t.toFixed(1)}s : pause`);
+    status.textContent = "End unlocked — adjust again, then Fix.";
+    refreshPlayButtons();
+    refreshConfirmedBoard();
+  }
+
   const startPad = seekFixPad({
     label: "Start",
     onActivate: () => setActiveMark("start"),
     onNudge: nudgePlayhead,
     onTogglePlay: togglePlayPause,
     onFix: fixStart,
+    onUndo: undoStart,
   });
 
   const endPad = seekFixPad({
     label: "End",
-    onActivate: () => setActiveMark("end"),
+    onActivate: () => {
+      setActiveMark("end");
+      // After Start is fixed, jump near the start so End editing is ready to play.
+      if (startFixed && video.paused) {
+        try {
+          const target =
+            draft.end > draft.start ? draft.start : Math.min(currentSafeTime(), duration || currentSafeTime());
+          if (Math.abs((video.currentTime || 0) - target) > 0.15) {
+            video.currentTime = target;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+    },
     onNudge: nudgePlayhead,
     onTogglePlay: togglePlayPause,
     onFix: fixEnd,
+    onUndo: undoEnd,
   });
 
   if (startFixed) startPad.setState(`${draft.start.toFixed(1)} → fix`, { fixed: true });

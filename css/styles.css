@@ -359,20 +359,26 @@ textarea {
 
 .mark-pad-row {
   display: grid;
-  grid-template-columns: 1fr 1.6fr 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 0.9fr 0.9fr 0.9fr 1fr 1fr;
+  gap: 6px;
 }
 
 .mark-pad-row .btn {
-  min-height: var(--touch);
-  padding: 10px 8px;
-  font-size: 1rem;
+  min-height: 48px;
+  padding: 8px 4px;
+  font-size: 0.92rem;
   font-weight: 700;
 }
 
 .mark-play {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
+  font-size: 1.15rem;
+}
+
+.mark-undo.is-disabled,
+.mark-undo:disabled {
+  opacity: 0.35;
 }
 
 .range-board {

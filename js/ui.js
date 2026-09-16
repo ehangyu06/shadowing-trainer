@@ -69,10 +69,18 @@ export function confirmAction(message) {
 }
 
 /**
- * Editor control: −0.1 | Play/Pause | +0.1 | Fix
+ * Editor control: −0.1 | Play/Pause | +0.1 | Fix | Undo
  * Only the active pad mirrors the video play/pause state.
  */
-export function seekFixPad({ label, step = 0.1, onActivate, onNudge, onTogglePlay, onFix }) {
+export function seekFixPad({
+  label,
+  step = 0.1,
+  onActivate,
+  onNudge,
+  onTogglePlay,
+  onFix,
+  onUndo,
+}) {
   let active = false;
   let fixed = false;
 
@@ -82,26 +90,30 @@ export function seekFixPad({ label, step = 0.1, onActivate, onNudge, onTogglePla
   const head = el("div", { class: "mark-pad-head" }, [
     title,
     stateEl,
-    el("span", { class: "muted mark-pad-hint", text: "−0.1 / Play·Pause / +0.1 → Fix" }),
+    el("span", {
+      class: "muted mark-pad-hint",
+      text: "−0.1 / Play·Pause / +0.1 → Fix / Undo",
+    }),
   ]);
   const row = el("div", { class: "mark-pad-row" });
   const minus = el("button", { type: "button", class: "btn btn-primary mark-step", text: "−0.1" });
   const playBtn = el("button", {
     type: "button",
     class: "btn btn-secondary mark-play",
-    text: "▶ Play",
+    text: "▶",
   });
   const plus = el("button", { type: "button", class: "btn btn-primary mark-step", text: "+0.1" });
   const fix = el("button", { type: "button", class: "btn btn-primary mark-fix", text: "Fix" });
+  const undo = el("button", { type: "button", class: "btn btn-ghost mark-undo", text: "Undo" });
 
   function setPlaying(playing) {
     if (!active) {
-      playBtn.textContent = "▶ Play";
+      playBtn.textContent = "▶";
       playBtn.classList.remove("btn-danger");
       playBtn.classList.add("btn-secondary");
       return;
     }
-    playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
+    playBtn.textContent = playing ? "⏸" : "▶";
     playBtn.classList.toggle("btn-danger", Boolean(playing));
     playBtn.classList.toggle("btn-secondary", !playing);
   }
@@ -116,35 +128,47 @@ export function seekFixPad({ label, step = 0.1, onActivate, onNudge, onTogglePla
     stateEl.textContent = text;
     fixed = Boolean(options.fixed);
     stateEl.classList.toggle("is-fixed", fixed);
+    undo.disabled = !fixed;
+    undo.classList.toggle("is-disabled", !fixed);
   }
 
   function activate() {
     onActivate?.();
   }
 
-  minus.addEventListener("click", () => {
+  minus.addEventListener("click", (event) => {
+    event.stopPropagation();
     activate();
     onNudge?.(-step);
   });
-  plus.addEventListener("click", () => {
+  plus.addEventListener("click", (event) => {
+    event.stopPropagation();
     activate();
     onNudge?.(step);
   });
-  playBtn.addEventListener("click", () => {
+  playBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
     activate();
-    onTogglePlay?.();
+    await onTogglePlay?.();
   });
-  fix.addEventListener("click", () => {
+  fix.addEventListener("click", (event) => {
+    event.stopPropagation();
     activate();
     onFix?.();
   });
-  wrap.addEventListener("pointerdown", () => activate());
+  undo.addEventListener("click", (event) => {
+    event.stopPropagation();
+    activate();
+    onUndo?.();
+  });
 
-  row.append(minus, playBtn, plus, fix);
+  row.append(minus, playBtn, plus, fix, undo);
   wrap.append(head, row);
   wrap.setPlaying = setPlaying;
   wrap.setActive = setActive;
   wrap.setState = setState;
   wrap.isActive = () => active;
+  undo.disabled = true;
+  undo.classList.add("is-disabled");
   return wrap;
 }
