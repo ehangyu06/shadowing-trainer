@@ -65,8 +65,25 @@ export async function renderEditor(root, clipId) {
   video.setAttribute("playsinline", "");
   video.setAttribute("webkit-playsinline", "");
 
+  let activeMark = null;
+  let startFixed = !isNew && draft.end > draft.start;
+  let endFixed = !isNew && draft.end > draft.start;
+
   const currentTimeEl = el("p", { class: "time-readout", text: "Current: 00:00.0" });
-  const rangeEl = el("p", { class: "time-readout" });
+  const rangeBoard = el("div", { class: "range-board hidden" }, [
+    el("div", { class: "range-cell" }, [
+      el("span", { class: "range-label", text: "Start =>" }),
+      el("strong", { class: "range-value", "data-role": "start", text: "00:00.0" }),
+    ]),
+    el("div", { class: "range-cell" }, [
+      el("span", { class: "range-label", text: "End =>" }),
+      el("strong", { class: "range-value", "data-role": "end", text: "00:00.0" }),
+    ]),
+    el("div", { class: "range-cell" }, [
+      el("span", { class: "range-label", text: "Duration :" }),
+      el("strong", { class: "range-value", "data-role": "duration", text: "0.0" }),
+    ]),
+  ]);
   const status = el("p", { class: "status-line" });
 
   const englishInput = el("textarea", {
@@ -102,15 +119,49 @@ export async function renderEditor(root, clipId) {
     }
   }
 
-  function refreshRange() {
-    const len = Math.max(0, roundTenth(draft.end - draft.start));
-    rangeEl.textContent = `Start: ${formatClock(draft.start)}   End: ${formatClock(draft.end)}   Duration: ${formatDuration(len)}`;
+  function refreshConfirmedBoard() {
+    const ready = startFixed && endFixed && draft.end > draft.start;
+    rangeBoard.classList.toggle("hidden", !ready);
+    if (!ready) return;
+    rangeBoard.querySelector('[data-role="start"]').textContent = formatClock(draft.start);
+    rangeBoard.querySelector('[data-role="end"]').textContent = formatClock(draft.end);
+    rangeBoard.querySelector('[data-role="duration"]').textContent = roundTenth(
+      draft.end - draft.start
+    ).toFixed(1);
+  }
+
+  function updateActivePadState() {
+    const t = currentSafeTime();
+    const playing = !video.paused;
+    if (activeMark === "start" && !startFixed) {
+      startPad.setState(`${t.toFixed(1)}s : ${playing ? "play" : "pause"}`);
+    }
+    if (activeMark === "end" && !endFixed) {
+      endPad.setState(`${t.toFixed(1)}s : ${playing ? "play" : "pause"}`);
+    }
+  }
+
+  function setActiveMark(which) {
+    activeMark = which;
+    startPad.setActive(which === "start");
+    endPad.setActive(which === "end");
+    refreshPlayButtons();
+    updateActivePadState();
   }
 
   function refreshPlayButtons() {
     const playing = !video.paused;
-    startPad.setPlaying(playing);
-    endPad.setPlaying(playing);
+    if (activeMark === "start") {
+      startPad.setPlaying(playing);
+      endPad.setPlaying(false);
+    } else if (activeMark === "end") {
+      endPad.setPlaying(playing);
+      startPad.setPlaying(false);
+    } else {
+      startPad.setPlaying(false);
+      endPad.setPlaying(false);
+    }
+    updateActivePadState();
   }
 
   function stopPreviewMode() {
@@ -127,6 +178,7 @@ export async function renderEditor(root, clipId) {
 
   function nudgePlayhead(delta) {
     stopPreviewMode();
+    video.pause();
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     const next = clamp(roundTenth((video.currentTime || 0) + delta), 0, max);
     try {
@@ -137,6 +189,10 @@ export async function renderEditor(root, clipId) {
     }
     currentTimeEl.textContent = `Current: ${formatClock(next)} (${next.toFixed(1)}s)`;
     status.textContent = `Moved to ${next.toFixed(1)}s`;
+    if (activeMark === "start") startFixed = false;
+    if (activeMark === "end") endFixed = false;
+    refreshPlayButtons();
+    refreshConfirmedBoard();
   }
 
   async function togglePlayPause() {
@@ -150,35 +206,51 @@ export async function renderEditor(root, clipId) {
     } else {
       video.pause();
     }
+    if (activeMark === "start") startFixed = false;
+    if (activeMark === "end") endFixed = false;
     refreshPlayButtons();
+    refreshConfirmedBoard();
   }
 
   function setStart(value) {
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     draft.start = clamp(roundTenth(value), 0, max);
-    refreshRange();
     if (player) player.setRange(draft.start, draft.end);
   }
 
   function setEnd(value) {
     const max = duration > 0 ? duration : Number.POSITIVE_INFINITY;
     draft.end = clamp(roundTenth(value), 0, max);
-    refreshRange();
     if (player) player.setRange(draft.start, draft.end);
   }
 
   function fixStart() {
-    setStart(currentSafeTime());
-    status.textContent = `Start fixed at ${draft.start.toFixed(1)}s`;
+    setActiveMark("start");
+    video.pause();
+    const t = currentSafeTime();
+    setStart(t);
+    startFixed = true;
+    startPad.setState(`${t.toFixed(1)} → fix`, { fixed: true });
+    status.textContent = `Start fixed at ${t.toFixed(1)}s`;
+    refreshPlayButtons();
+    refreshConfirmedBoard();
   }
 
   function fixEnd() {
-    setEnd(currentSafeTime());
-    status.textContent = `End fixed at ${draft.end.toFixed(1)}s`;
+    setActiveMark("end");
+    video.pause();
+    const t = currentSafeTime();
+    setEnd(t);
+    endFixed = true;
+    endPad.setState(`${t.toFixed(1)} → fix`, { fixed: true });
+    status.textContent = `End fixed at ${t.toFixed(1)}s`;
+    refreshPlayButtons();
+    refreshConfirmedBoard();
   }
 
   const startPad = seekFixPad({
     label: "Start",
+    onActivate: () => setActiveMark("start"),
     onNudge: nudgePlayhead,
     onTogglePlay: togglePlayPause,
     onFix: fixStart,
@@ -186,10 +258,16 @@ export async function renderEditor(root, clipId) {
 
   const endPad = seekFixPad({
     label: "End",
+    onActivate: () => setActiveMark("end"),
     onNudge: nudgePlayhead,
     onTogglePlay: togglePlayPause,
     onFix: fixEnd,
   });
+
+  if (startFixed) startPad.setState(`${draft.start.toFixed(1)} → fix`, { fixed: true });
+  else startPad.setState("—");
+  if (endFixed) endPad.setState(`${draft.end.toFixed(1)} → fix`, { fixed: true });
+  else endPad.setState("—");
 
   function attachPlayer() {
     if (player) player.destroy();
@@ -228,6 +306,7 @@ export async function renderEditor(root, clipId) {
 
   video.addEventListener("timeupdate", () => {
     currentTimeEl.textContent = `Current: ${formatClock(video.currentTime)} (${roundTenth(video.currentTime).toFixed(1)}s)`;
+    updateActivePadState();
   });
   video.addEventListener("play", refreshPlayButtons);
   video.addEventListener("pause", refreshPlayButtons);
@@ -322,7 +401,7 @@ export async function renderEditor(root, clipId) {
   const sticky = el("div", { class: "editor-sticky" }, [
     el("div", { class: "video-shell" }, [video]),
     currentTimeEl,
-    rangeEl,
+    rangeBoard,
     el("div", { class: "btn-grid editor-set-row" }, [
       el("button", {
         type: "button",
@@ -399,7 +478,7 @@ export async function renderEditor(root, clipId) {
 
   document.documentElement.classList.add("editor-lock");
   document.body.classList.add("editor-lock");
-  refreshRange();
+  refreshConfirmedBoard();
   refreshPlayButtons();
   root.replaceChildren(screen);
   if (draft.video_id) loadSelectedVideo();

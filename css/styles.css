@@ -313,10 +313,44 @@ textarea {
 
 .mark-pad {
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
   border-radius: var(--radius);
   padding: 14px;
   margin: 12px 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mark-pad.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
+}
+
+.mark-pad-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.mark-pad-title {
+  font-size: 1.15rem;
+}
+
+.mark-pad-state {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #d7deea;
+}
+
+.mark-pad-state.is-fixed {
+  color: #fff;
+  font-size: 1.28rem;
+}
+
+.mark-pad-hint {
+  font-size: 0.85rem;
 }
 
 .mark-pad .settings-label {
@@ -337,6 +371,46 @@ textarea {
 }
 
 .mark-play {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.range-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  margin: 8px 0 10px;
+  border: 2px solid #9aa3b5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f6fb;
+  color: #111;
+}
+
+.range-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 6px;
+  border-right: 1px solid #9aa3b5;
+  text-align: center;
+}
+
+.range-cell:last-child {
+  border-right: 0;
+}
+
+.range-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #222;
+}
+
+.range-value {
+  font-size: 1.15rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }

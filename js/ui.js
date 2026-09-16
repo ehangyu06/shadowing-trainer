@@ -70,13 +70,19 @@ export function confirmAction(message) {
 
 /**
  * Editor control: −0.1 | Play/Pause | +0.1 | Fix
- * Nudges the live video playhead; Fix commits the current time.
+ * Only the active pad mirrors the video play/pause state.
  */
-export function seekFixPad({ label, step = 0.1, onNudge, onTogglePlay, onFix }) {
+export function seekFixPad({ label, step = 0.1, onActivate, onNudge, onTogglePlay, onFix }) {
+  let active = false;
+  let fixed = false;
+
   const wrap = el("div", { class: "mark-pad" });
-  const head = el("div", { class: "settings-label" }, [
-    el("strong", { text: label }),
-    el("span", { class: "muted", text: "−0.1 / Play·Pause / +0.1 → Fix" }),
+  const title = el("strong", { class: "mark-pad-title", text: label });
+  const stateEl = el("p", { class: "mark-pad-state", text: "—" });
+  const head = el("div", { class: "mark-pad-head" }, [
+    title,
+    stateEl,
+    el("span", { class: "muted mark-pad-hint", text: "−0.1 / Play·Pause / +0.1 → Fix" }),
   ]);
   const row = el("div", { class: "mark-pad-row" });
   const minus = el("button", { type: "button", class: "btn btn-primary mark-step", text: "−0.1" });
@@ -89,18 +95,56 @@ export function seekFixPad({ label, step = 0.1, onNudge, onTogglePlay, onFix }) 
   const fix = el("button", { type: "button", class: "btn btn-primary mark-fix", text: "Fix" });
 
   function setPlaying(playing) {
+    if (!active) {
+      playBtn.textContent = "▶ Play";
+      playBtn.classList.remove("btn-danger");
+      playBtn.classList.add("btn-secondary");
+      return;
+    }
     playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
     playBtn.classList.toggle("btn-danger", Boolean(playing));
     playBtn.classList.toggle("btn-secondary", !playing);
   }
 
-  minus.addEventListener("click", () => onNudge?.(-step));
-  plus.addEventListener("click", () => onNudge?.(step));
-  playBtn.addEventListener("click", () => onTogglePlay?.());
-  fix.addEventListener("click", () => onFix?.());
+  function setActive(next) {
+    active = Boolean(next);
+    wrap.classList.toggle("is-active", active);
+    if (!active) setPlaying(false);
+  }
+
+  function setState(text, options = {}) {
+    stateEl.textContent = text;
+    fixed = Boolean(options.fixed);
+    stateEl.classList.toggle("is-fixed", fixed);
+  }
+
+  function activate() {
+    onActivate?.();
+  }
+
+  minus.addEventListener("click", () => {
+    activate();
+    onNudge?.(-step);
+  });
+  plus.addEventListener("click", () => {
+    activate();
+    onNudge?.(step);
+  });
+  playBtn.addEventListener("click", () => {
+    activate();
+    onTogglePlay?.();
+  });
+  fix.addEventListener("click", () => {
+    activate();
+    onFix?.();
+  });
+  wrap.addEventListener("pointerdown", () => activate());
 
   row.append(minus, playBtn, plus, fix);
   wrap.append(head, row);
   wrap.setPlaying = setPlaying;
+  wrap.setActive = setActive;
+  wrap.setState = setState;
+  wrap.isActive = () => active;
   return wrap;
 }
