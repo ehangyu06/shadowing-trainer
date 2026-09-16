@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916o";
-import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916o";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916o";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916o";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916o";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916o";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916p";
+import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916p";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916p";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916p";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916p";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916p";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916o";
-import { rememberReturnToLibrary } from "../navMemory.js?v=20260916o";
+} from "../titleStore.js?v=20260916p";
+import { rememberReturnToLibrary } from "../navMemory.js?v=20260916p";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {

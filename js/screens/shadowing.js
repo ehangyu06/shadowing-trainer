@@ -1,11 +1,11 @@
-import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916o";
-import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916o";
-import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916o";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916o";
-import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916o";
-import { getVideo } from "../videoList.js?v=20260916o";
-import { el } from "../ui.js?v=20260916o";
-import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260916o";
+import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916p";
+import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916p";
+import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916p";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916p";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916p";
+import { getVideo } from "../videoList.js?v=20260916p";
+import { el } from "../ui.js?v=20260916p";
+import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260916p";
 
 function goLibraryFromClip(clipId) {
   setLibraryFocusClip(clipId);

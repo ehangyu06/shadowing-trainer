@@ -1,20 +1,18 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916o";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916o";
-import { loadVideos } from "../videoList.js?v=20260916o";
+import { ASSET_VERSION } from "../constants.js?v=20260916p";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916p";
+import { loadVideos } from "../videoList.js?v=20260916p";
 import {
-  bindPickedFile,
   expectedFilename,
   getLocalBinding,
-  mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916o";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916o";
-import { el, confirmAction } from "../ui.js?v=20260916o";
-import { formatDuration } from "../time.js?v=20260916o";
+} from "../videoSource.js?v=20260916p";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916p";
+import { el, confirmAction } from "../ui.js?v=20260916p";
+import { formatDuration } from "../time.js?v=20260916p";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916o";
+} from "../navMemory.js?v=20260916p";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -26,6 +24,14 @@ export async function renderLibrary(root) {
   const statusByVideo = {};
   const focusId = resolveLibraryFocusClip();
 
+  for (const videoId of videoIds) {
+    const url = await resolveVideoUrl(videoId);
+    const video = videos.find((item) => item.id === videoId);
+    const binding = getLocalBinding(videoId);
+    const wanted = expectedFilename(video, binding);
+    statusByVideo[videoId] = { url, wanted };
+  }
+
   const header = el("header", { class: "topbar" }, [
     el("div", {}, [
       el("h1", { text: "Shadowing Trainer" }),
@@ -35,79 +41,11 @@ export async function renderLibrary(root) {
       }),
     ]),
     el("div", { class: "topbar-actions" }, [
+      el("a", { class: "btn btn-secondary", href: "#/videos", text: "Videos" }),
       el("a", { class: "btn btn-secondary", href: "#/settings", text: "Settings" }),
       el("a", { class: "btn btn-primary", href: "#/new", text: "New Clip" }),
     ]),
   ]);
-
-  const bindBox = el("div", { class: "bind-list" });
-  if (videoIds.length) {
-    bindBox.append(
-      el("p", {
-        class: "muted bind-hint",
-        text: "Workplace tip: select each video once when needed. “Change Video File” replaces that source for every clip that uses it — to change only one clip, open Edit → Select Video File.",
-      })
-    );
-  }
-  for (const videoId of videoIds) {
-    const url = await resolveVideoUrl(videoId);
-    const video = videos.find((item) => item.id === videoId);
-    const binding = getLocalBinding(videoId);
-    const wanted = expectedFilename(video, binding);
-    statusByVideo[videoId] = { url, wanted };
-    const row = el("div", {
-      class: url ? "bind-row bind-row-ready" : "bind-row bind-row-need",
-    });
-    const input = el("input", {
-      type: "file",
-      accept: "video/*,.mp4,.mov,.m4v",
-      class: "file-input",
-    });
-    input.addEventListener("change", async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const users = clips.filter((clip) => String(clip.video_id) === String(videoId));
-      if (users.length > 1) {
-        const ok = confirmAction(
-          `This video is used by ${users.length} clips.\nReplace the file for ALL of them?\n\nTo change only one clip, use Edit → Select Video File.`
-        );
-        if (!ok) {
-          input.value = "";
-          return;
-        }
-      }
-      try {
-        const result = await bindPickedFile(file, videoId);
-        if (result.persistError) {
-          alert(`${result.persistError}\n\nVideo works for now, but may ask again after reload.`);
-        }
-      } catch (err) {
-        alert(err.message || "Could not save this video.");
-      }
-      input.value = "";
-      renderLibrary(root);
-    });
-    row.append(
-      el("div", { class: "bind-copy" }, [
-        el("strong", { text: videoId }),
-        wanted
-          ? el("p", { class: "bind-filename", text: wanted })
-          : null,
-        el("p", {
-          class: "muted",
-          text: mediaStatusLabel(videoId, video, binding, url),
-        }),
-      ]),
-      el("button", {
-        type: "button",
-        class: url ? "btn btn-secondary" : "btn btn-primary",
-        text: url ? "Change Video File" : "Select Video File",
-        onClick: () => input.click(),
-      }),
-      input
-    );
-    bindBox.append(row);
-  }
 
   const list = el("div", { class: "clip-list" });
   let focusCard = null;
@@ -174,12 +112,7 @@ export async function renderLibrary(root) {
     });
   }
 
-  const screen = el("section", { class: "screen library-screen" }, [
-    header,
-    videoIds.length ? bindBox : null,
-    list,
-  ]);
-  root.append(screen);
+  root.append(el("section", { class: "screen library-screen" }, [header, list]));
 
   if (focusCard) {
     requestAnimationFrame(() => {
