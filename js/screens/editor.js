@@ -461,6 +461,72 @@ export async function renderEditor(root, clipId) {
     onClick: () => fileInput.click(),
   });
 
+  const saveNote = el("p", { class: "status-line save-note" });
+  const saveBtn = el("button", {
+    type: "button",
+    class: "btn btn-primary btn-block save-clip-btn",
+    text: "Save Clip",
+  });
+
+  let saving = false;
+
+  function setSavePressed(on) {
+    saveBtn.classList.toggle("is-pressed", on);
+  }
+
+  saveBtn.addEventListener("pointerdown", () => {
+    if (!saving) setSavePressed(true);
+  });
+  for (const evt of ["pointerup", "pointercancel", "pointerleave"]) {
+    saveBtn.addEventListener(evt, () => {
+      if (!saving) setSavePressed(false);
+    });
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    if (saving) return;
+    draft.english = englishInput.value.trim();
+    draft.korean = koreanInput.value.trim();
+    if (!draft.video_id) {
+      saveNote.textContent = "Choose or select a video first.";
+      status.textContent = saveNote.textContent;
+      saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
+      return;
+    }
+    if (!(draft.end > draft.start)) {
+      saveNote.textContent = "End must be later than Start. Fix Start / End first.";
+      status.textContent = saveNote.textContent;
+      saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
+      return;
+    }
+
+    saving = true;
+    saveBtn.disabled = true;
+    saveBtn.classList.add("is-pressed", "is-saving");
+    saveBtn.classList.remove("is-saved");
+    saveBtn.textContent = "Saving…";
+    saveNote.textContent = "Saving clip…";
+    status.textContent = "Saving clip…";
+
+    try {
+      await upsertClip(draft);
+      saveBtn.classList.remove("is-saving");
+      saveBtn.classList.add("is-saved", "is-pressed");
+      saveBtn.textContent = "Saved ✓";
+      saveNote.textContent = "Clip saved.";
+      status.textContent = "Clip saved.";
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      location.hash = "#/";
+    } catch (err) {
+      saving = false;
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
+      saveBtn.textContent = "Save Clip";
+      saveNote.textContent = err.message || "Could not save clip.";
+      status.textContent = saveNote.textContent;
+    }
+  });
+
   const sticky = el("div", { class: "editor-sticky" }, [
     el("div", { class: "video-shell" }, [video]),
     currentTimeEl,
@@ -503,26 +569,6 @@ export async function renderEditor(root, clipId) {
       el("label", { class: "field-label", text: "한글 자막" }),
       koreanInput,
       el("div", { class: "stack-actions" }, [
-        el("button", {
-          type: "button",
-          class: "btn btn-primary btn-block",
-          text: "Save Clip",
-          onClick: async () => {
-            draft.english = englishInput.value.trim();
-            draft.korean = koreanInput.value.trim();
-            if (!draft.video_id) {
-              status.textContent = "Choose or select a video first.";
-              return;
-            }
-            if (draft.end <= draft.start) {
-              status.textContent = "End must be later than Start.";
-              return;
-            }
-            await upsertClip(draft);
-            status.textContent = "Clip saved.";
-            location.hash = "#/";
-          },
-        }),
         !isNew &&
           el("button", {
             type: "button",
@@ -537,6 +583,7 @@ export async function renderEditor(root, clipId) {
         el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Cancel" }),
       ]),
     ]),
+    el("div", { class: "editor-footer" }, [saveNote, saveBtn]),
   ]);
 
   document.documentElement.classList.add("editor-lock");

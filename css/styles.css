@@ -510,12 +510,41 @@ textarea {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   touch-action: pan-y;
-  padding: 10px 0 calc(24px + env(safe-area-inset-bottom));
+  padding: 10px 0 12px;
 }
 
 .editor-body > .btn {
   width: 100%;
   margin: 8px 0 4px;
+}
+
+.editor-footer {
+  flex: 0 0 auto;
+  z-index: 3;
+  padding: 10px 0 calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: 0 -8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.editor-footer .save-note {
+  margin: 0 0 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.btn-primary.is-saving {
+  background: #163a80;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5);
+  transform: scale(0.98);
+  pointer-events: none;
+}
+
+.btn-primary.is-saved {
+  background: #1f7a4c;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.35);
+  transform: scale(0.98);
+  pointer-events: none;
 }
 
 html.editor-lock,
