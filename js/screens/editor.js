@@ -457,7 +457,7 @@ export async function renderEditor(root, clipId) {
 
   const pickBtn = el("button", {
     type: "button",
-    class: "btn btn-secondary btn-block",
+    class: "btn btn-secondary btn-block editor-rail-btn",
     text: "Select Video File",
     onClick: () => fileInput.click(),
   });
@@ -465,7 +465,7 @@ export async function renderEditor(root, clipId) {
   const saveNote = el("p", { class: "status-line save-note" });
   const saveBtn = el("button", {
     type: "button",
-    class: "btn btn-primary btn-block save-clip-btn",
+    class: "btn btn-primary btn-block save-clip-btn editor-rail-btn",
     text: "Save Clip",
   });
 
@@ -546,12 +546,18 @@ export async function renderEditor(root, clipId) {
         onClick: fixEnd,
       }),
     ]),
-    pickBtn,
-    fileInput,
-    status,
   ]);
 
-  const screen = el("section", { class: "editor-screen" }, [
+  const rail = el("aside", { class: "editor-rail" }, [
+    el("div", { class: "editor-rail-top" }, [
+      pickBtn,
+      fileInput,
+      status,
+    ]),
+    el("div", { class: "editor-rail-bottom" }, [saveNote, saveBtn]),
+  ]);
+
+  const main = el("div", { class: "editor-main" }, [
     el("div", { class: "editor-top" }, [
       el("header", { class: "topbar editor-topbar" }, [
         el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
@@ -584,8 +590,9 @@ export async function renderEditor(root, clipId) {
         el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Cancel" }),
       ]),
     ]),
-    el("div", { class: "editor-footer" }, [saveNote, saveBtn]),
   ]);
+
+  const screen = el("section", { class: "editor-screen" }, [rail, main]);
 
   document.documentElement.classList.add("editor-lock");
   document.body.classList.add("editor-lock");
