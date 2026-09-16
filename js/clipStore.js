@@ -2,11 +2,11 @@ import {
   CLIPS_KEY,
   CLIPS_DELETED_KEY,
   LIBRARY_CLEANUP_KEY,
-} from "./constants.js?v=20260916p";
-import { roundTenth } from "./time.js?v=20260916p";
-import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916p";
-import { videoIdFromName, removeVideos } from "./videoList.js?v=20260916p";
-import { rememberClipTitle } from "./titleStore.js?v=20260916p";
+} from "./constants.js?v=20260916q";
+import { roundTenth } from "./time.js?v=20260916q";
+import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916q";
+import { videoIdFromName, removeVideos } from "./videoList.js?v=20260916q";
+import { rememberClipTitle } from "./titleStore.js?v=20260916q";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
