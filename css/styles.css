@@ -211,6 +211,18 @@ input.title-input {
   flex-shrink: 0;
 }
 
+.library-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 18px;
+  padding: var(--pad);
+  background: rgba(11, 12, 16, 0.94);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
 .muted {
   color: var(--muted);
 }
@@ -610,9 +622,6 @@ input.title-input {
   min-height: 120px;
 }
 
-.editor-set-row {
-  margin-top: 4px;
-}
 
 .editor-screen {
   position: fixed;
@@ -1021,10 +1030,6 @@ body.editor-lock #app {
   .editor-video {
     max-height: 56vh;
   }
-}
-
-.editor-screen .editor-set-row .btn:last-of-type {
-  grid-column: auto;
 }
 
 @media (max-width: 640px) {

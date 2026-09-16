@@ -1,13 +1,13 @@
-import { loadClips } from "../clipStore.js?v=20260916s";
-import { loadVideos } from "../videoList.js?v=20260916s";
+import { loadClips } from "../clipStore.js?v=20260916t";
+import { loadVideos } from "../videoList.js?v=20260916t";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916s";
-import { el, confirmAction } from "../ui.js?v=20260916s";
+} from "../videoSource.js?v=20260916t";
+import { el, confirmAction } from "../ui.js?v=20260916t";
 
 export async function renderVideos(root) {
   root.replaceChildren();

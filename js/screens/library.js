@@ -1,18 +1,18 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916s";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916s";
-import { loadVideos } from "../videoList.js?v=20260916s";
+import { ASSET_VERSION } from "../constants.js?v=20260916t";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916t";
+import { loadVideos } from "../videoList.js?v=20260916t";
 import {
   expectedFilename,
   getLocalBinding,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916s";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916s";
-import { el, confirmAction } from "../ui.js?v=20260916s";
-import { formatDuration } from "../time.js?v=20260916s";
+} from "../videoSource.js?v=20260916t";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916t";
+import { el, confirmAction } from "../ui.js?v=20260916t";
+import { formatDuration } from "../time.js?v=20260916t";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916s";
+} from "../navMemory.js?v=20260916t";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -32,7 +32,7 @@ export async function renderLibrary(root) {
     statusByVideo[videoId] = { url, wanted };
   }
 
-  const header = el("header", { class: "topbar" }, [
+  const header = el("header", { class: "topbar library-topbar" }, [
     el("div", {}, [
       el("h1", { text: "Shadowing Trainer" }),
       el("p", {
@@ -40,7 +40,7 @@ export async function renderLibrary(root) {
         text: `Default session: ${settings.phases.join(" + ")} = ${total} loops · v${ASSET_VERSION}`,
       }),
     ]),
-    el("div", { class: "topbar-actions" }, [
+    el("div", { class: "topbar-actions library-topbar-actions" }, [
       el("a", { class: "btn btn-secondary", href: "#/videos", text: "Videos" }),
       el("a", { class: "btn btn-secondary", href: "#/settings", text: "Settings" }),
       el("a", { class: "btn btn-primary", href: "#/new", text: "New Clip" }),
@@ -54,7 +54,7 @@ export async function renderLibrary(root) {
       el("div", { class: "empty-card" }, [
         el("h2", { text: "No clips yet" }),
         el("p", {
-          text: "Create a clip at home, or select a video file and use Set Start / Set End.",
+          text: "Create a clip at home, or select a video file and set Start / End with Fix.",
         }),
         el("a", { class: "btn btn-primary", href: "#/new", text: "Create First Clip" }),
       ])

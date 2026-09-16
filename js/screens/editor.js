@@ -1,14 +1,14 @@
-import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260916s";
-import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916s";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916s";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916s";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916s";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916s";
+import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260916t";
+import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916t";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916t";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916t";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916t";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916t";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916s";
-import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260916s";
+} from "../titleStore.js?v=20260916t";
+import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260916t";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -652,20 +652,6 @@ export async function renderEditor(root, clipId) {
     el("div", { class: "video-shell" }, [video]),
     currentTimeEl,
     rangeBoard,
-    el("div", { class: "btn-grid editor-set-row" }, [
-      el("button", {
-        type: "button",
-        class: "btn btn-primary",
-        text: "Set Start",
-        onClick: fixStart,
-      }),
-      el("button", {
-        type: "button",
-        class: "btn btn-primary",
-        text: "Set End",
-        onClick: fixEnd,
-      }),
-    ]),
   ]);
 
   const rail = el("aside", { class: "editor-rail" }, [
