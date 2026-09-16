@@ -1,18 +1,18 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916t";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916t";
-import { loadVideos } from "../videoList.js?v=20260916t";
+import { ASSET_VERSION } from "../constants.js?v=20260916u";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916u";
+import { loadVideos } from "../videoList.js?v=20260916u";
 import {
   expectedFilename,
   getLocalBinding,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916t";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916t";
-import { el, confirmAction } from "../ui.js?v=20260916t";
-import { formatDuration } from "../time.js?v=20260916t";
+} from "../videoSource.js?v=20260916u";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916u";
+import { el, confirmAction } from "../ui.js?v=20260916u";
+import { formatDuration } from "../time.js?v=20260916u";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916t";
+} from "../navMemory.js?v=20260916u";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -32,6 +32,12 @@ export async function renderLibrary(root) {
     statusByVideo[videoId] = { url, wanted };
   }
 
+  const nav = el("nav", { class: "library-nav-fixed", "aria-label": "Library actions" }, [
+    el("a", { class: "btn btn-secondary", href: "#/videos", text: "Videos" }),
+    el("a", { class: "btn btn-secondary", href: "#/settings", text: "Settings" }),
+    el("a", { class: "btn btn-primary", href: "#/new", text: "New Clip" }),
+  ]);
+
   const header = el("header", { class: "topbar library-topbar" }, [
     el("div", {}, [
       el("h1", { text: "Shadowing Trainer" }),
@@ -39,11 +45,6 @@ export async function renderLibrary(root) {
         class: "muted",
         text: `Default session: ${settings.phases.join(" + ")} = ${total} loops · v${ASSET_VERSION}`,
       }),
-    ]),
-    el("div", { class: "topbar-actions library-topbar-actions" }, [
-      el("a", { class: "btn btn-secondary", href: "#/videos", text: "Videos" }),
-      el("a", { class: "btn btn-secondary", href: "#/settings", text: "Settings" }),
-      el("a", { class: "btn btn-primary", href: "#/new", text: "New Clip" }),
     ]),
   ]);
 
@@ -112,7 +113,7 @@ export async function renderLibrary(root) {
     });
   }
 
-  root.append(el("section", { class: "screen library-screen" }, [header, list]));
+  root.append(el("section", { class: "screen library-screen" }, [nav, header, list]));
 
   if (focusCard) {
     requestAnimationFrame(() => {

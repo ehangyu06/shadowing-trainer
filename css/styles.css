@@ -211,16 +211,36 @@ input.title-input {
   flex-shrink: 0;
 }
 
-.library-topbar {
-  position: sticky;
+.library-nav-fixed {
+  position: fixed;
   top: 0;
-  z-index: 40;
-  margin: calc(var(--pad) * -1) calc(var(--pad) * -1) 18px;
-  padding: var(--pad);
-  background: rgba(11, 12, 16, 0.94);
+  left: 0;
+  right: 0;
+  z-index: 70;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  padding: max(10px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px
+    max(16px, env(safe-area-inset-left));
+  background: rgba(11, 12, 16, 0.96);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.library-nav-fixed .btn {
+  min-height: 48px;
+  padding: 10px 14px;
+}
+
+.library-screen {
+  padding-top: calc(var(--pad) + 68px + env(safe-area-inset-top, 0px));
+}
+
+.library-topbar {
+  margin-bottom: 18px;
 }
 
 .muted {
@@ -1042,6 +1062,14 @@ body.editor-lock #app {
   }
 
   .topbar-actions .btn {
+    flex: 1;
+  }
+
+  .library-nav-fixed {
+    justify-content: stretch;
+  }
+
+  .library-nav-fixed .btn {
     flex: 1;
   }
 
