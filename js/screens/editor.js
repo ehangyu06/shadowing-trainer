@@ -381,7 +381,7 @@ export async function renderEditor(root, clipId) {
 
   const previewBtn = el("button", {
     type: "button",
-    class: "btn btn-secondary",
+    class: "btn btn-secondary btn-block editor-rail-btn",
     text: "Preview Loop",
   });
   previewBtn.addEventListener("click", async () => {
@@ -465,8 +465,27 @@ export async function renderEditor(root, clipId) {
   const saveNote = el("p", { class: "status-line save-note" });
   const saveBtn = el("button", {
     type: "button",
-    class: "btn btn-primary btn-block save-clip-btn editor-rail-btn",
+    class: "btn btn-primary btn-block save-clip-btn editor-rail-btn editor-rail-btn-save",
     text: "Save Clip",
+  });
+
+  const deleteBtn = !isNew
+    ? el("button", {
+        type: "button",
+        class: "btn btn-ghost btn-block editor-rail-btn editor-rail-btn-muted",
+        text: "Delete Clip",
+        onClick: async () => {
+          if (!confirmAction("Delete this clip?")) return;
+          await deleteClip(draft.id);
+          location.hash = "#/";
+        },
+      })
+    : null;
+
+  const cancelBtn = el("a", {
+    class: "btn btn-ghost btn-block editor-rail-btn editor-rail-btn-muted",
+    href: "#/",
+    text: "Cancel",
   });
 
   let saving = false;
@@ -549,12 +568,15 @@ export async function renderEditor(root, clipId) {
   ]);
 
   const rail = el("aside", { class: "editor-rail" }, [
-    el("div", { class: "editor-rail-top" }, [
+    el("div", { class: "editor-rail-stack" }, [
       pickBtn,
       fileInput,
-      status,
+      previewBtn,
+      saveBtn,
+      deleteBtn,
+      cancelBtn,
     ]),
-    el("div", { class: "editor-rail-bottom" }, [saveNote, saveBtn]),
+    el("div", { class: "editor-rail-meta" }, [status, saveNote]),
   ]);
 
   const main = el("div", { class: "editor-main" }, [
@@ -566,7 +588,6 @@ export async function renderEditor(root, clipId) {
       sticky,
     ]),
     el("div", { class: "editor-body", id: "editor-scroll" }, [
-      previewBtn,
       startPad,
       endPad,
       el("label", { class: "field-label", text: "Video" }),
@@ -575,20 +596,6 @@ export async function renderEditor(root, clipId) {
       englishInput,
       el("label", { class: "field-label", text: "한글 자막" }),
       koreanInput,
-      el("div", { class: "stack-actions" }, [
-        !isNew &&
-          el("button", {
-            type: "button",
-            class: "btn btn-ghost btn-block",
-            text: "Delete Clip",
-            onClick: async () => {
-              if (!confirmAction("Delete this clip?")) return;
-              await deleteClip(draft.id);
-              location.hash = "#/";
-            },
-          }),
-        el("a", { class: "btn btn-ghost btn-block", href: "#/", text: "Cancel" }),
-      ]),
     ]),
   ]);
 
