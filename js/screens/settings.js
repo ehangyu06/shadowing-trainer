@@ -1,6 +1,6 @@
-import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260916q";
-import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260916q";
-import { el, stepper } from "../ui.js?v=20260916q";
+import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260916r";
+import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260916r";
+import { el, stepper } from "../ui.js?v=20260916r";
 
 export function renderSettings(root) {
   const settings = loadSettings();

@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916q";
-import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916q";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916q";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916q";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916q";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916q";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916r";
+import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916r";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916r";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916r";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916r";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916r";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916q";
-import { rememberReturnToLibrary } from "../navMemory.js?v=20260916q";
+} from "../titleStore.js?v=20260916r";
+import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260916r";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -60,6 +60,11 @@ export async function renderEditor(root, clipId) {
 
   function goLibrary() {
     rememberReturnToLibrary({ editedClipId: draft.id, isNew });
+    location.hash = "#/";
+  }
+
+  function goLibraryAfterSave(savedId) {
+    setLibraryFocusClip(savedId);
     location.hash = "#/";
   }
 
@@ -611,14 +616,15 @@ export async function renderEditor(root, clipId) {
     status.textContent = "Saving clip…";
 
     try {
-      await upsertClip(draft);
+      const saved = await upsertClip(draft);
+      draft.id = saved.id;
       saveBtn.classList.remove("is-saving");
       saveBtn.classList.add("is-saved", "is-pressed");
       saveBtn.textContent = "Saved ✓";
-      saveNote.textContent = "Clip saved.";
-      status.textContent = "Clip saved.";
+      saveNote.textContent = `Clip saved: ${saved.title || saved.id}`;
+      status.textContent = saveNote.textContent;
       await new Promise((resolve) => setTimeout(resolve, 700));
-      goLibrary();
+      goLibraryAfterSave(saved.id);
     } catch (err) {
       saving = false;
       saveBtn.disabled = false;

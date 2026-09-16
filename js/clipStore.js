@@ -2,11 +2,11 @@ import {
   CLIPS_KEY,
   CLIPS_DELETED_KEY,
   LIBRARY_CLEANUP_KEY,
-} from "./constants.js?v=20260916q";
-import { roundTenth } from "./time.js?v=20260916q";
-import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916q";
-import { videoIdFromName, removeVideos } from "./videoList.js?v=20260916q";
-import { rememberClipTitle } from "./titleStore.js?v=20260916q";
+} from "./constants.js?v=20260916r";
+import { roundTenth } from "./time.js?v=20260916r";
+import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916r";
+import { videoIdFromName, removeVideos } from "./videoList.js?v=20260916r";
+import { rememberClipTitle } from "./titleStore.js?v=20260916r";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
@@ -72,7 +72,7 @@ function sortClips(clips) {
   return [...clips].sort((a, b) => Number(a.id) - Number(b.id));
 }
 
-/** One-time: drop old demo / requested leftover videos from this device. */
+/** Legacy one-time cleanup — only drops the old bundled demo id. */
 function runLibraryCleanup(clips) {
   try {
     if (localStorage.getItem(LIBRARY_CLEANUP_KEY) === "1") {
@@ -82,7 +82,8 @@ function runLibraryCleanup(clips) {
     /* continue */
   }
 
-  const purgeVideos = new Set(["sample", "img_1136", "img_1137"]);
+  // Do NOT purge user videos (img_1136 / img_1137). That deleted real clips.
+  const purgeVideos = new Set(["sample"]);
   const kept = [];
   const removedIds = [];
   for (const clip of clips) {
@@ -165,9 +166,14 @@ export function nextClipId(clips) {
 
 export async function upsertClip(partial) {
   const clips = await loadClips();
-  const id = Number(partial.id) || nextClipId(clips);
+  // Prefer an unused id so a previously deleted id cannot be filtered back out.
+  let id = Number(partial.id) || 0;
+  if (!id || clips.some((item) => Number(item.id) === id)) {
+    id = nextClipId(clips);
+  }
+  // Clear any stale deleted marker for this id (and never leave it deleted after save).
   unmarkDeleted(id);
-  const index = clips.findIndex((item) => item.id === id);
+  const index = clips.findIndex((item) => Number(item.id) === id);
   const prev = index >= 0 ? clips[index] : null;
   const now = Date.now();
   const clip = normalizeClip({
@@ -179,8 +185,9 @@ export async function upsertClip(partial) {
   if (index >= 0) clips[index] = clip;
   else clips.push(clip);
   if (clip.title) rememberClipTitle(clip.title);
-  await saveClips(clips);
-  return clip;
+  const saved = await saveClips(clips);
+  const found = saved.find((item) => Number(item.id) === id) || clip;
+  return found;
 }
 
 export const saveClip = upsertClip;
