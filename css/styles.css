@@ -484,13 +484,13 @@ textarea {
 }
 
 .editor-rail {
-  flex: 0 0 158px;
-  width: 158px;
+  flex: 0 0 190px;
+  width: 190px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 10px;
-  padding: 10px 8px;
+  gap: 12px;
+  padding: 12px 10px;
   background: #07080c;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -502,7 +502,7 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: 10px;
 }
 
 .editor-rail-meta {
@@ -515,7 +515,7 @@ textarea {
 .editor-rail .status-line,
 .editor-rail .save-note {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   line-height: 1.3;
   text-align: left;
   word-break: break-word;
@@ -528,20 +528,20 @@ textarea {
 
 .editor-rail-btn {
   width: 100%;
-  min-height: 52px;
-  padding: 10px 8px;
+  min-height: 62px;
+  padding: 12px 10px;
   white-space: normal;
   line-height: 1.2;
-  font-size: 0.9rem;
+  font-size: 1.08rem;
   box-sizing: border-box;
   text-align: center;
 }
 
 .editor-rail-btn-save {
-  min-height: 92px;
-  margin: 4px 0;
-  padding: 16px 10px;
-  font-size: 1.15rem;
+  min-height: 110px;
+  margin: 6px 0;
+  padding: 19px 12px;
+  font-size: 1.38rem;
   font-weight: 800;
   letter-spacing: -0.02em;
   border: 2px solid #9ec2ff;
@@ -549,8 +549,8 @@ textarea {
 }
 
 .editor-rail-btn-muted {
-  min-height: 48px;
-  font-size: 0.86rem;
+  min-height: 58px;
+  font-size: 1.03rem;
   opacity: 0.92;
 }
 
@@ -611,20 +611,25 @@ textarea {
 
 @media (max-width: 700px) {
   .editor-rail {
-    flex-basis: 128px;
-    width: 128px;
-    padding: 8px 6px;
+    flex-basis: 154px;
+    width: 154px;
+    padding: 10px 8px;
   }
 
   .editor-rail-btn {
-    min-height: 48px;
-    font-size: 0.82rem;
-    padding: 8px 6px;
+    min-height: 58px;
+    font-size: 0.98rem;
+    padding: 10px 8px;
   }
 
   .editor-rail-btn-save {
-    min-height: 78px;
-    font-size: 1.02rem;
+    min-height: 94px;
+    font-size: 1.22rem;
+  }
+
+  .editor-rail-btn-muted {
+    min-height: 54px;
+    font-size: 0.98rem;
   }
 }
 

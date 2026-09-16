@@ -1,10 +1,10 @@
-import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916f";
-import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916f";
-import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916f";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916f";
-import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916f";
-import { getVideo } from "../videoList.js?v=20260916f";
-import { el } from "../ui.js?v=20260916f";
+import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916g";
+import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916g";
+import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916g";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916g";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916g";
+import { getVideo } from "../videoList.js?v=20260916g";
+import { el } from "../ui.js?v=20260916g";
 
 let session = null;
 let renderToken = 0;
