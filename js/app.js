@@ -1,7 +1,7 @@
-import { renderLibrary } from "./screens/library.js?v=20260916n";
-import { renderSettings } from "./screens/settings.js?v=20260916n";
-import { renderEditor } from "./screens/editor.js?v=20260916n";
-import { renderShadowing, destroyShadowing } from "./screens/shadowing.js?v=20260916n";
+import { renderLibrary } from "./screens/library.js?v=20260916o";
+import { renderSettings } from "./screens/settings.js?v=20260916o";
+import { renderEditor } from "./screens/editor.js?v=20260916o";
+import { renderShadowing, destroyShadowing } from "./screens/shadowing.js?v=20260916o";
 
 const root = document.getElementById("app");
 let current = { name: "", key: "" };

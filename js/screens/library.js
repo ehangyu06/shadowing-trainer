@@ -1,20 +1,20 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916n";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916n";
-import { loadVideos } from "../videoList.js?v=20260916n";
+import { ASSET_VERSION } from "../constants.js?v=20260916o";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916o";
+import { loadVideos } from "../videoList.js?v=20260916o";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916n";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916n";
-import { el, confirmAction } from "../ui.js?v=20260916n";
-import { formatDuration } from "../time.js?v=20260916n";
+} from "../videoSource.js?v=20260916o";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916o";
+import { el, confirmAction } from "../ui.js?v=20260916o";
+import { formatDuration } from "../time.js?v=20260916o";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916n";
+} from "../navMemory.js?v=20260916o";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -45,7 +45,7 @@ export async function renderLibrary(root) {
     bindBox.append(
       el("p", {
         class: "muted bind-hint",
-        text: "Workplace tip: select each video once. It stays saved on this iPad until Safari clears site data.",
+        text: "Workplace tip: select each video once when needed. “Change Video File” replaces that source for every clip that uses it — to change only one clip, open Edit → Select Video File.",
       })
     );
   }
@@ -66,6 +66,16 @@ export async function renderLibrary(root) {
     input.addEventListener("change", async () => {
       const file = input.files?.[0];
       if (!file) return;
+      const users = clips.filter((clip) => String(clip.video_id) === String(videoId));
+      if (users.length > 1) {
+        const ok = confirmAction(
+          `This video is used by ${users.length} clips.\nReplace the file for ALL of them?\n\nTo change only one clip, use Edit → Select Video File.`
+        );
+        if (!ok) {
+          input.value = "";
+          return;
+        }
+      }
       try {
         const result = await bindPickedFile(file, videoId);
         if (result.persistError) {

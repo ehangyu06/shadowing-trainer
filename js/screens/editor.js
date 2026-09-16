@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916n";
-import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916n";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916n";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916n";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916n";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916n";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916o";
+import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916o";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916o";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916o";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916o";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916o";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916n";
-import { rememberReturnToLibrary } from "../navMemory.js?v=20260916n";
+} from "../titleStore.js?v=20260916o";
+import { rememberReturnToLibrary } from "../navMemory.js?v=20260916o";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -494,15 +494,11 @@ export async function renderEditor(root, clipId) {
     stopPreviewMode();
     video.pause();
     try {
-      // Never reuse another clip's video_id for a newly picked file.
-      // New clips always get a fresh id from the filename.
-      // Edit may re-bind only when the file still maps to this clip's video_id.
-      let preferredId;
-      if (!isNew && draft.video_id) {
-        const fromName = videoIdFromName(file.name || "");
-        if (!fromName || fromName === draft.video_id) preferredId = draft.video_id;
-      }
-      const result = await bindPickedFile(file, preferredId);
+      // Editor must NEVER overwrite a video_id that other clips may share.
+      // Always store the picked file under a unique id for this clip only.
+      const base = videoIdFromName(file.name || `video_${Date.now()}`) || `video_${Date.now().toString(36)}`;
+      const exclusiveId = `${base}_${Date.now().toString(36)}`;
+      const result = await bindPickedFile(file, exclusiveId);
       const { videoId, url } = result;
       draft.video_id = videoId;
       const fresh = await loadVideos();
