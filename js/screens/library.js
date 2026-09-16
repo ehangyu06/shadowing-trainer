@@ -1,16 +1,16 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916g";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916g";
-import { loadVideos } from "../videoList.js?v=20260916g";
+import { ASSET_VERSION } from "../constants.js?v=20260916h";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916h";
+import { loadVideos } from "../videoList.js?v=20260916h";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916g";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916g";
-import { el, confirmAction } from "../ui.js?v=20260916g";
-import { formatDuration } from "../time.js?v=20260916g";
+} from "../videoSource.js?v=20260916h";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916h";
+import { el, confirmAction } from "../ui.js?v=20260916h";
+import { formatDuration } from "../time.js?v=20260916h";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -110,7 +110,7 @@ export async function renderLibrary(root) {
       const duration = Math.max(0, clip.end - clip.start);
       const card = el("article", { class: "clip-card" });
       const open = el("a", { class: "clip-main", href: `#/train/${clip.id}` }, [
-        el("div", { class: "clip-kicker", text: `Clip ${index + 1}` }),
+        el("div", { class: "clip-kicker", text: clip.title || `Clip ${index + 1}` }),
         el("p", {
           class: "clip-english",
           text: clip.english || "(No English subtitle)",

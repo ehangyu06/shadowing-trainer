@@ -24,7 +24,8 @@ export function formatRate(rate) {
 export const SETTINGS_KEY = "shadowing-trainer:settings";
 export const CLIPS_KEY = "shadowing-trainer:clips";
 export const VIDEO_BINDINGS_KEY = "shadowing-trainer:video-bindings";
-export const ASSET_VERSION = "20260916g";
+export const CLIP_TITLES_KEY = "shadowing-trainer:clip-titles";
+export const ASSET_VERSION = "20260916h";
 
 export const DEFAULT_PHASE_COUNTS = [3, 3, 3, 20, 20];
 export const DEFAULT_PLAYBACK_RATE = 1.0;

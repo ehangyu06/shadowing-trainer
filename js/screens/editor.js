@@ -1,9 +1,13 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916g";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260916g";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916g";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916g";
-import { formatClock, roundTenth, clamp } from "../time.js?v=20260916g";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916g";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916h";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260916h";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916h";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916h";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916h";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916h";
+import {
+  formatClipCreatedAt,
+  suggestClipTitles,
+} from "../titleStore.js?v=20260916h";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -43,11 +47,15 @@ export async function renderEditor(root, clipId) {
     : {
         id: nextClipId(clips),
         video_id: videos[0]?.id || "",
+        title: "",
         start: 0,
         end: 0,
         english: "",
         korean: "",
+        created_at: 0,
       };
+  if (draft.title == null) draft.title = "";
+  if (!draft.created_at) draft.created_at = existing?.created_at || 0;
 
   let duration = 0;
   let previewing = false;
@@ -85,6 +93,79 @@ export async function renderEditor(root, clipId) {
     ]),
   ]);
   const status = el("p", { class: "status-line" });
+  const clipInfoEl = el("div", { class: "editor-clip-info" });
+  let titleInput = null;
+
+  function refreshClipInfo() {
+    const title = (titleInput?.value || draft.title || "").trim() || "(이름 없음)";
+    const span =
+      draft.end > draft.start ? formatDuration(draft.end - draft.start) : "—";
+    const made = formatClipCreatedAt(draft.created_at) || (isNew ? "새 클립" : "—");
+    clipInfoEl.replaceChildren(
+      el("p", { class: "editor-clip-info-title", text: title }),
+      el("p", {
+        class: "muted editor-clip-info-meta",
+        text: `길이 ${span} · ${made}`,
+      })
+    );
+  }
+
+  const titleSuggest = el("div", { class: "title-suggest hidden" });
+  titleInput = el("input", {
+    type: "text",
+    class: "text-input title-input",
+    placeholder: "비디오 이름 (예: 아쿠아리움이 문을 닫을때)",
+    autocomplete: "off",
+    autocorrect: "off",
+    spellcheck: "false",
+  });
+  titleInput.value = draft.title || "";
+
+  function hideTitleSuggest() {
+    titleSuggest.classList.add("hidden");
+    titleSuggest.replaceChildren();
+  }
+
+  function showTitleSuggest() {
+    const suggestions = suggestClipTitles(titleInput.value, clips);
+    titleSuggest.replaceChildren();
+    if (!suggestions.length) {
+      hideTitleSuggest();
+      return;
+    }
+    for (const suggestion of suggestions) {
+      titleSuggest.append(
+        el("button", {
+          type: "button",
+          class: "title-suggest-item",
+          text: suggestion,
+          onClick: () => {
+            titleInput.value = suggestion;
+            draft.title = suggestion;
+            hideTitleSuggest();
+            refreshClipInfo();
+          },
+        })
+      );
+    }
+    titleSuggest.classList.remove("hidden");
+  }
+
+  titleInput.addEventListener("input", () => {
+    draft.title = titleInput.value.trim();
+    refreshClipInfo();
+    showTitleSuggest();
+  });
+  titleInput.addEventListener("focus", () => showTitleSuggest());
+  titleInput.addEventListener("blur", () => {
+    setTimeout(hideTitleSuggest, 180);
+  });
+
+  const titleField = el("div", { class: "title-field" }, [
+    el("label", { class: "field-label", text: "비디오 이름" }),
+    titleInput,
+    titleSuggest,
+  ]);
 
   const englishInput = el("textarea", {
     class: "text-input",
@@ -122,12 +203,16 @@ export async function renderEditor(root, clipId) {
   function refreshConfirmedBoard() {
     const ready = startFixed && endFixed && draft.end > draft.start;
     rangeBoard.classList.toggle("hidden", !ready);
-    if (!ready) return;
+    if (!ready) {
+      refreshClipInfo();
+      return;
+    }
     rangeBoard.querySelector('[data-role="start"]').textContent = formatClock(draft.start);
     rangeBoard.querySelector('[data-role="end"]').textContent = formatClock(draft.end);
     rangeBoard.querySelector('[data-role="duration"]').textContent = roundTenth(
       draft.end - draft.start
     ).toFixed(1);
+    refreshClipInfo();
   }
 
   function updateActivePadState() {
@@ -505,8 +590,16 @@ export async function renderEditor(root, clipId) {
 
   saveBtn.addEventListener("click", async () => {
     if (saving) return;
+    draft.title = titleInput.value.trim();
     draft.english = englishInput.value.trim();
     draft.korean = koreanInput.value.trim();
+    if (!draft.title) {
+      saveNote.textContent = "비디오 이름을 입력해 주세요.";
+      status.textContent = saveNote.textContent;
+      saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
+      titleInput.focus();
+      return;
+    }
     if (!draft.video_id) {
       saveNote.textContent = "Choose or select a video first.";
       status.textContent = saveNote.textContent;
@@ -576,7 +669,7 @@ export async function renderEditor(root, clipId) {
       deleteBtn,
       cancelBtn,
     ]),
-    el("div", { class: "editor-rail-meta" }, [status, saveNote]),
+    el("div", { class: "editor-rail-meta" }, [clipInfoEl, status, saveNote]),
   ]);
 
   const main = el("div", { class: "editor-main" }, [
@@ -588,6 +681,7 @@ export async function renderEditor(root, clipId) {
       sticky,
     ]),
     el("div", { class: "editor-body", id: "editor-scroll" }, [
+      titleField,
       startPad,
       endPad,
       el("label", { class: "field-label", text: "Video" }),
@@ -604,6 +698,7 @@ export async function renderEditor(root, clipId) {
   document.documentElement.classList.add("editor-lock");
   document.body.classList.add("editor-lock");
   refreshConfirmedBoard();
+  refreshClipInfo();
   refreshPlayButtons();
   root.replaceChildren(screen);
   attachPlayer();

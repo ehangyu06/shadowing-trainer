@@ -1,17 +1,21 @@
-import { CLIPS_KEY } from "./constants.js?v=20260916g";
-import { roundTenth } from "./time.js?v=20260916g";
-import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916g";
-import { videoIdFromName } from "./videoList.js?v=20260916g";
+import { CLIPS_KEY } from "./constants.js?v=20260916h";
+import { roundTenth } from "./time.js?v=20260916h";
+import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916h";
+import { videoIdFromName } from "./videoList.js?v=20260916h";
+import { rememberClipTitle } from "./titleStore.js?v=20260916h";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
   return {
     id: Number(clip.id) || index + 1,
     video_id: String(clip.video_id || videoIdFromName(legacyPath) || ""),
+    title: String(clip.title || clip.name || "").trim(),
     start: roundTenth(clip.start ?? clip.start_time ?? 0),
     end: roundTenth(clip.end ?? clip.end_time ?? 0),
     english: String(clip.english || ""),
     korean: String(clip.korean || ""),
+    created_at: Number(clip.created_at) || 0,
+    updated_at: Number(clip.updated_at) || 0,
   };
 }
 
@@ -89,10 +93,18 @@ export function nextClipId(clips) {
 export async function upsertClip(partial) {
   const clips = await loadClips();
   const id = Number(partial.id) || nextClipId(clips);
-  const clip = normalizeClip({ ...partial, id });
   const index = clips.findIndex((item) => item.id === id);
+  const prev = index >= 0 ? clips[index] : null;
+  const now = Date.now();
+  const clip = normalizeClip({
+    ...partial,
+    id,
+    created_at: prev?.created_at || partial.created_at || now,
+    updated_at: now,
+  });
   if (index >= 0) clips[index] = clip;
   else clips.push(clip);
+  if (clip.title) rememberClipTitle(clip.title);
   await saveClips(clips);
   return clip;
 }

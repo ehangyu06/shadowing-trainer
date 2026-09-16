@@ -1,10 +1,10 @@
-import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916g";
-import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916g";
-import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916g";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916g";
-import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916g";
-import { getVideo } from "../videoList.js?v=20260916g";
-import { el } from "../ui.js?v=20260916g";
+import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916h";
+import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916h";
+import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916h";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916h";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916h";
+import { getVideo } from "../videoList.js?v=20260916h";
+import { el } from "../ui.js?v=20260916h";
 
 let session = null;
 let renderToken = 0;
@@ -408,6 +408,10 @@ export async function renderShadowing(root, clipId) {
       class: "btn btn-ghost back-library-fixed",
       href: "#/",
       text: "Back to Library",
+    }),
+    el("div", {
+      class: "clip-title-badge",
+      text: clip.title || `Clip ${clip.id}`,
     }),
     el("div", { class: "train-layout" }, [
       el("div", { class: "train-video" }, [video, startOverlay, completeOverlay]),
