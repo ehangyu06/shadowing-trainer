@@ -1,12 +1,7 @@
-import {
-  CLIPS_KEY,
-  CLIPS_DELETED_KEY,
-  LIBRARY_CLEANUP_KEY,
-} from "./constants.js?v=20260916r";
-import { roundTenth } from "./time.js?v=20260916r";
-import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916r";
-import { videoIdFromName, removeVideos } from "./videoList.js?v=20260916r";
-import { rememberClipTitle } from "./titleStore.js?v=20260916r";
+import { CLIPS_KEY, CLIPS_DELETED_KEY } from "./constants.js?v=20260916s";
+import { roundTenth } from "./time.js?v=20260916s";
+import { videoIdFromName } from "./videoList.js?v=20260916s";
+import { rememberClipTitle } from "./titleStore.js?v=20260916s";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
@@ -28,20 +23,6 @@ function normalizeClips(clips) {
   return clips.map((clip, i) => normalizeClip(clip, i));
 }
 
-function readLocal() {
-  const raw = localStorage.getItem(CLIPS_KEY);
-  if (!raw) return null;
-  try {
-    return normalizeClips(JSON.parse(raw));
-  } catch {
-    return null;
-  }
-}
-
-function writeLocal(clips) {
-  localStorage.setItem(CLIPS_KEY, JSON.stringify(clips));
-}
-
 function readDeletedIds() {
   try {
     const raw = JSON.parse(localStorage.getItem(CLIPS_DELETED_KEY) || "[]");
@@ -59,7 +40,6 @@ function markDeleted(ids) {
   const deleted = readDeletedIds();
   for (const id of [].concat(ids)) deleted.add(String(id));
   writeDeletedIds(deleted);
-  return deleted;
 }
 
 function unmarkDeleted(id) {
@@ -72,87 +52,61 @@ function sortClips(clips) {
   return [...clips].sort((a, b) => Number(a.id) - Number(b.id));
 }
 
-/** Legacy one-time cleanup — only drops the old bundled demo id. */
-function runLibraryCleanup(clips) {
+function readLocalRaw() {
   try {
-    if (localStorage.getItem(LIBRARY_CLEANUP_KEY) === "1") {
-      return clips;
-    }
+    const raw = localStorage.getItem(CLIPS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return normalizeClips(Array.isArray(parsed) ? parsed : []);
   } catch {
-    /* continue */
+    return [];
   }
-
-  // Do NOT purge user videos (img_1136 / img_1137). That deleted real clips.
-  const purgeVideos = new Set(["sample"]);
-  const kept = [];
-  const removedIds = [];
-  for (const clip of clips) {
-    if (purgeVideos.has(String(clip.video_id))) removedIds.push(clip.id);
-    else kept.push(clip);
-  }
-  if (removedIds.length) markDeleted(removedIds);
-  removeVideos([...purgeVideos]);
-
-  try {
-    localStorage.setItem(LIBRARY_CLEANUP_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-  return kept;
 }
 
+function writeLocalRaw(clips) {
+  const next = sortClips(normalizeClips(clips));
+  const payload = JSON.stringify(next);
+  try {
+    localStorage.setItem(CLIPS_KEY, payload);
+  } catch (err) {
+    throw new Error(
+      err?.name === "QuotaExceededError"
+        ? "Storage full. Delete old clips/videos and try again."
+        : "Could not write clips to device storage."
+    );
+  }
+  // Verify immediately — Safari can appear to succeed then drop data.
+  const check = readLocalRaw();
+  if (check.length !== next.length) {
+    throw new Error("Clip save did not stick in storage. Try again.");
+  }
+  for (const clip of next) {
+    if (!check.some((item) => Number(item.id) === Number(clip.id))) {
+      throw new Error(`Clip ${clip.id} missing after save.`);
+    }
+  }
+  return check;
+}
+
+/**
+ * Device localStorage is the only source of truth on GitHub Pages.
+ * Seed/API merges previously caused new clips to disappear.
+ */
 export async function loadClips() {
-  const fromApi = await fetchJsonIfOk(resourceUrl("api/clips"));
-  const seed = normalizeClips(
-    fromApi || (await fetchJsonIfOk(resourceUrl("data/clips.json"))) || []
-  );
   const deleted = readDeletedIds();
-  const local = readLocal();
-
-  if (fromApi) {
-    const next = sortClips(seed.filter((clip) => !deleted.has(String(clip.id))));
-    const cleaned = runLibraryCleanup(next);
-    writeLocal(cleaned);
-    return cleaned;
+  const raw = readLocalRaw();
+  const local = raw.filter((clip) => !deleted.has(String(clip.id)));
+  if (local.length !== raw.length) {
+    writeLocalRaw(local);
   }
-
-  if (!local) {
-    const next = sortClips(seed.filter((clip) => !deleted.has(String(clip.id))));
-    const cleaned = runLibraryCleanup(next);
-    writeLocal(cleaned);
-    return cleaned;
-  }
-
-  // Local is source of truth. Seed may only add brand-new ids that were never deleted.
-  const byId = new Map(local.map((clip) => [String(clip.id), clip]));
-  for (const clip of seed) {
-    const id = String(clip.id);
-    if (deleted.has(id) || byId.has(id)) continue;
-    byId.set(id, clip);
-  }
-  const next = sortClips(
-    [...byId.values()].filter((clip) => !deleted.has(String(clip.id)))
-  );
-  const cleaned = runLibraryCleanup(next);
-  writeLocal(cleaned);
-  return cleaned;
+  return local;
 }
 
 export const getClips = loadClips;
 
 export async function saveClips(clips) {
-  const next = normalizeClips(clips).filter((clip) => !readDeletedIds().has(String(clip.id)));
-  writeLocal(next);
-  try {
-    await fetch(resourceUrl("api/clips"), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(next, null, 2),
-    });
-  } catch {
-    // localStorage already holds the clips
-  }
-  return next;
+  // Do not filter by deleted here — callers decide. Persist exactly.
+  return writeLocalRaw(clips);
 }
 
 export async function getClip(id) {
@@ -161,32 +115,63 @@ export async function getClip(id) {
 }
 
 export function nextClipId(clips) {
-  return clips.reduce((max, clip) => Math.max(max, Number(clip.id) || 0), 0) + 1;
+  const list = clips || readLocalRaw();
+  return list.reduce((max, clip) => Math.max(max, Number(clip.id) || 0), 0) + 1;
 }
 
 export async function upsertClip(partial) {
-  const clips = await loadClips();
-  // Prefer an unused id so a previously deleted id cannot be filtered back out.
-  let id = Number(partial.id) || 0;
-  if (!id || clips.some((item) => Number(item.id) === id)) {
-    id = nextClipId(clips);
+  const local = readLocalRaw();
+  const deleted = readDeletedIds();
+  const asNew =
+    Boolean(partial.__asNew) ||
+    partial.id == null ||
+    partial.id === "" ||
+    !Number(partial.id);
+
+  let id;
+  let index = -1;
+
+  if (asNew) {
+    id = nextClipId(local);
+    while (local.some((item) => Number(item.id) === id) || deleted.has(String(id))) {
+      id += 1;
+    }
+  } else {
+    id = Number(partial.id);
+    index = local.findIndex((item) => Number(item.id) === id);
+    if (index < 0) {
+      id = nextClipId(local);
+      while (local.some((item) => Number(item.id) === id) || deleted.has(String(id))) {
+        id += 1;
+      }
+    }
   }
-  // Clear any stale deleted marker for this id (and never leave it deleted after save).
+
   unmarkDeleted(id);
-  const index = clips.findIndex((item) => Number(item.id) === id);
-  const prev = index >= 0 ? clips[index] : null;
+
+  const prev = index >= 0 ? local[index] : null;
   const now = Date.now();
   const clip = normalizeClip({
-    ...partial,
     id,
+    video_id: partial.video_id,
+    title: partial.title,
+    start: partial.start,
+    end: partial.end,
+    english: partial.english,
+    korean: partial.korean,
     created_at: prev?.created_at || partial.created_at || now,
     updated_at: now,
   });
-  if (index >= 0) clips[index] = clip;
-  else clips.push(clip);
+
+  const next = local.slice();
+  if (index >= 0) next[index] = clip;
+  else next.push(clip);
+
   if (clip.title) rememberClipTitle(clip.title);
-  const saved = await saveClips(clips);
-  const found = saved.find((item) => Number(item.id) === id) || clip;
+
+  const savedList = writeLocalRaw(next);
+  const found = savedList.find((item) => Number(item.id) === Number(id));
+  if (!found) throw new Error("Save failed: clip not found after write.");
   return found;
 }
 
@@ -195,18 +180,17 @@ export const updateClip = upsertClip;
 
 export async function deleteClip(id) {
   markDeleted(id);
-  const local = readLocal() || [];
-  const clips = local.filter((clip) => String(clip.id) !== String(id));
-  await saveClips(clips);
-  return clips;
+  const local = readLocalRaw().filter((clip) => String(clip.id) !== String(id));
+  writeLocalRaw(local);
+  return local;
 }
 
 export async function deleteClipsByVideoId(videoId) {
-  const clips = await loadClips();
-  const removed = clips.filter((clip) => String(clip.video_id) === String(videoId));
+  const local = readLocalRaw();
+  const removed = local.filter((clip) => String(clip.video_id) === String(videoId));
   if (removed.length) markDeleted(removed.map((clip) => clip.id));
-  const kept = clips.filter((clip) => String(clip.video_id) !== String(videoId));
-  await saveClips(kept);
+  const kept = local.filter((clip) => String(clip.video_id) !== String(videoId));
+  writeLocalRaw(kept);
   return kept;
 }
 

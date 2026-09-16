@@ -1,6 +1,6 @@
-import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260916r";
-import { formatBytes, loadMediaRecord, saveMediaBlob } from "./mediaStore.js?v=20260916r";
-import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260916r";
+import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260916s";
+import { formatBytes, loadMediaRecord, saveMediaBlob } from "./mediaStore.js?v=20260916s";
+import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260916s";
 
 const objectUrls = new Map();
 

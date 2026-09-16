@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916r";
-import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916r";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916r";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916r";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916r";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916r";
+import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260916s";
+import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916s";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916s";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916s";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916s";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916s";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916r";
-import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260916r";
+} from "../titleStore.js?v=20260916s";
+import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260916s";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -46,7 +46,7 @@ export async function renderEditor(root, clipId) {
   const draft = existing
     ? { ...existing }
     : {
-        id: nextClipId(clips),
+        id: null,
         video_id: "",
         title: "",
         start: 0,
@@ -616,14 +616,27 @@ export async function renderEditor(root, clipId) {
     status.textContent = "Saving clip…";
 
     try {
-      const saved = await upsertClip(draft);
+      const payload = {
+        ...draft,
+        title: draft.title,
+        english: draft.english,
+        korean: draft.korean,
+        video_id: draft.video_id,
+        start: draft.start,
+        end: draft.end,
+      };
+      if (isNew || payload.id == null) {
+        delete payload.id;
+        payload.__asNew = true;
+      }
+      const saved = await upsertClip(payload);
       draft.id = saved.id;
       saveBtn.classList.remove("is-saving");
       saveBtn.classList.add("is-saved", "is-pressed");
       saveBtn.textContent = "Saved ✓";
-      saveNote.textContent = `Clip saved: ${saved.title || saved.id}`;
+      saveNote.textContent = `Saved “${saved.title}” (#${saved.id})`;
       status.textContent = saveNote.textContent;
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      await new Promise((resolve) => setTimeout(resolve, 600));
       goLibraryAfterSave(saved.id);
     } catch (err) {
       saving = false;
