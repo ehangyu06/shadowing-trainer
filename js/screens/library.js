@@ -4,6 +4,7 @@ import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
+  mediaStatusLabel,
   resolveVideoUrl,
 } from "../videoSource.js";
 import { totalRepeats, loadSettings } from "../settingsStore.js";
@@ -17,6 +18,7 @@ export async function renderLibrary(root) {
   const videos = await loadVideos();
   const total = totalRepeats(settings);
   const videoIds = [...new Set(clips.map((clip) => clip.video_id).filter(Boolean))];
+  const statusByVideo = {};
 
   const header = el("header", { class: "topbar" }, [
     el("div", {}, [
@@ -33,39 +35,56 @@ export async function renderLibrary(root) {
   ]);
 
   const bindBox = el("div", { class: "bind-list" });
+  if (videoIds.length) {
+    bindBox.append(
+      el("p", {
+        class: "muted bind-hint",
+        text: "Workplace tip: select each video once. It stays saved on this iPad until Safari clears site data.",
+      })
+    );
+  }
   for (const videoId of videoIds) {
     const url = await resolveVideoUrl(videoId);
     const video = videos.find((item) => item.id === videoId);
     const binding = getLocalBinding(videoId);
     const wanted = expectedFilename(video, binding);
-    const row = el("div", { class: "bind-row" });
+    statusByVideo[videoId] = { url, wanted };
+    const row = el("div", {
+      class: url ? "bind-row bind-row-ready" : "bind-row bind-row-need",
+    });
     const input = el("input", {
       type: "file",
-    accept: "video/*,.mp4,.mov,.m4v",
-    class: "file-input",
-  });
-  input.addEventListener("change", async () => {
+      accept: "video/*,.mp4,.mov,.m4v",
+      class: "file-input",
+    });
+    input.addEventListener("change", async () => {
       const file = input.files?.[0];
       if (!file) return;
-      await bindPickedFile(file, videoId);
+      try {
+        const result = await bindPickedFile(file, videoId);
+        if (result.persistError) {
+          alert(`${result.persistError}\n\nVideo works for now, but may ask again after reload.`);
+        }
+      } catch (err) {
+        alert(err.message || "Could not save this video.");
+      }
       input.value = "";
       renderLibrary(root);
     });
     row.append(
-      el("div", {}, [
+      el("div", { class: "bind-copy" }, [
         el("strong", { text: videoId }),
+        wanted
+          ? el("p", { class: "bind-filename", text: wanted })
+          : null,
         el("p", {
           class: "muted",
-          text: url
-            ? "Ready on this device"
-            : wanted
-              ? `Select ${wanted} from Files`
-              : "Select Video File from Files",
+          text: mediaStatusLabel(videoId, video, binding, url),
         }),
       ]),
       el("button", {
         type: "button",
-        class: "btn btn-secondary",
+        class: url ? "btn btn-secondary" : "btn btn-primary",
         text: url ? "Change Video File" : "Select Video File",
         onClick: () => input.click(),
       }),
@@ -101,7 +120,12 @@ export async function renderLibrary(root) {
         }),
         el("p", {
           class: "clip-meta muted",
-          text: `${formatDuration(duration)} · ${clip.video_id || "no video"}`,
+          text: (() => {
+            const status = statusByVideo[clip.video_id] || {};
+            const name = status.wanted || clip.video_id || "no video";
+            const ready = status.url ? "saved" : "needs file";
+            return `${formatDuration(duration)} · ${name} · ${ready}`;
+          })(),
         }),
       ]);
       const actions = el("div", { class: "clip-actions" }, [

@@ -426,7 +426,8 @@ export async function renderEditor(root, clipId) {
     stopPreviewMode();
     video.pause();
     try {
-      const { videoId, url } = await bindPickedFile(file);
+      const result = await bindPickedFile(file);
+      const { videoId, url } = result;
       draft.video_id = videoId;
       const fresh = await loadVideos();
       videos.splice(0, videos.length, ...fresh);
@@ -438,7 +439,9 @@ export async function renderEditor(root, clipId) {
       if (draft.end <= draft.start) setEnd(duration);
       attachPlayer();
       uploadVideo(file).catch(() => {});
-      status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s)`;
+      status.textContent = result.persistError
+        ? `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) — not saved on device (${result.persistError})`
+        : `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) · saved on this device`;
     } catch (err) {
       status.textContent = err.message || "Could not open this video. Try Files app → Browse, or another format.";
     } finally {

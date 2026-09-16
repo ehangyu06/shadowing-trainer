@@ -2,7 +2,8 @@ import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants
 import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js";
 import { getClip, loadClips, neighborIds } from "../clipStore.js";
 import { createLoopPlayer, setVideoSource } from "../loopPlayer.js";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js";
+import { getVideo } from "../videoList.js";
 import { el } from "../ui.js";
 
 let session = null;
@@ -350,10 +351,13 @@ export async function renderShadowing(root, clipId) {
     const file = pickInput.files?.[0];
     if (!file) return;
     try {
-      const { url } = await bindPickedFile(file, state.clip.video_id);
-      setVideoSource(video, url);
+      const result = await bindPickedFile(file, state.clip.video_id);
+      setVideoSource(video, result.url);
       await attachMedia();
       refreshChrome();
+      if (result.persistError) {
+        startNote.textContent = `${result.persistError} Video works for now.`;
+      }
     } catch (err) {
       startNote.textContent = err.message || "Could not open this video.";
       pickBtn.classList.remove("hidden");
@@ -386,8 +390,14 @@ export async function renderShadowing(root, clipId) {
     player.setRange(state.clip.start, state.clip.end);
     player.seekToStart();
   });
-  video.addEventListener("error", () => {
-    startNote.textContent = `Video is not available for ${state.clip.video_id}. Select Video File from Files.`;
+  video.addEventListener("error", async () => {
+    const videoMeta = await getVideo(state.clip.video_id);
+    const binding = getLocalBinding(state.clip.video_id);
+    const wanted = expectedFilename(videoMeta, binding);
+    startNote.textContent = wanted
+      ? `Could not play “${wanted}”. Select that file again from Photos / Files.`
+      : `Video is not available for ${state.clip.video_id}. Select Video File from Files.`;
+    pickBtn.textContent = wanted ? `Select ${wanted}` : "Select Video File";
     pickBtn.classList.remove("hidden");
     startBtn.classList.add("hidden");
     state.mediaReady = false;
@@ -454,9 +464,15 @@ export async function renderShadowing(root, clipId) {
   root.replaceChildren(screen);
   async function attachMedia() {
     const url = await resolveVideoUrl(state.clip.video_id);
+    const videoMeta = await getVideo(state.clip.video_id);
+    const binding = getLocalBinding(state.clip.video_id);
+    const wanted = expectedFilename(videoMeta, binding);
     if (!url) {
       state.mediaReady = false;
-      startNote.textContent = `Select the video file for ${state.clip.video_id}. Clip times stay saved.`;
+      startNote.textContent = wanted
+        ? `Select “${wanted}” once. After that it stays on this iPad for this clip.`
+        : `Select the video file for ${state.clip.video_id} once. Clip times stay saved.`;
+      pickBtn.textContent = wanted ? `Select ${wanted}` : "Select Video File";
       pickBtn.classList.remove("hidden");
       startBtn.classList.add("hidden");
       return;

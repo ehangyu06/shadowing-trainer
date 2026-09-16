@@ -205,6 +205,10 @@ textarea {
   margin-bottom: 16px;
 }
 
+.bind-hint {
+  margin: 0 0 4px;
+}
+
 .bind-row {
   display: flex;
   justify-content: space-between;
@@ -214,6 +218,24 @@ textarea {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 12px 16px;
+}
+
+.bind-row-ready {
+  border-color: color-mix(in srgb, var(--accent, #3d8bfd) 45%, var(--line));
+}
+
+.bind-row-need {
+  border-color: color-mix(in srgb, #e8a317 55%, var(--line));
+}
+
+.bind-copy {
+  min-width: 0;
+}
+
+.bind-filename {
+  margin: 4px 0 0;
+  font-weight: 600;
+  word-break: break-all;
 }
 
 .bind-row p {
