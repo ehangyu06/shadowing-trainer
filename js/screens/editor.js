@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916m";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260916m";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916m";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916m";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916m";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916m";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916n";
+import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916n";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916n";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916n";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916n";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916n";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916m";
-import { rememberReturnToLibrary } from "../navMemory.js?v=20260916m";
+} from "../titleStore.js?v=20260916n";
+import { rememberReturnToLibrary } from "../navMemory.js?v=20260916n";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -47,7 +47,7 @@ export async function renderEditor(root, clipId) {
     ? { ...existing }
     : {
         id: nextClipId(clips),
-        video_id: videos[0]?.id || "",
+        video_id: "",
         title: "",
         start: 0,
         end: 0,
@@ -494,7 +494,15 @@ export async function renderEditor(root, clipId) {
     stopPreviewMode();
     video.pause();
     try {
-      const result = await bindPickedFile(file, draft.video_id || undefined);
+      // Never reuse another clip's video_id for a newly picked file.
+      // New clips always get a fresh id from the filename.
+      // Edit may re-bind only when the file still maps to this clip's video_id.
+      let preferredId;
+      if (!isNew && draft.video_id) {
+        const fromName = videoIdFromName(file.name || "");
+        if (!fromName || fromName === draft.video_id) preferredId = draft.video_id;
+      }
+      const result = await bindPickedFile(file, preferredId);
       const { videoId, url } = result;
       draft.video_id = videoId;
       const fresh = await loadVideos();
