@@ -25,7 +25,9 @@ export const SETTINGS_KEY = "shadowing-trainer:settings";
 export const CLIPS_KEY = "shadowing-trainer:clips";
 export const VIDEO_BINDINGS_KEY = "shadowing-trainer:video-bindings";
 export const CLIP_TITLES_KEY = "shadowing-trainer:clip-titles";
-export const ASSET_VERSION = "20260916h";
+export const LAST_PLAYED_CLIP_KEY = "shadowing-trainer:last-played-clip";
+export const LIBRARY_FOCUS_CLIP_KEY = "shadowing-trainer:library-focus-clip";
+export const ASSET_VERSION = "20260916i";
 
 export const DEFAULT_PHASE_COUNTS = [3, 3, 3, 20, 20];
 export const DEFAULT_PLAYBACK_RATE = 1.0;

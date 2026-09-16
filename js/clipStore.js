@@ -1,8 +1,8 @@
-import { CLIPS_KEY } from "./constants.js?v=20260916h";
-import { roundTenth } from "./time.js?v=20260916h";
-import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916h";
-import { videoIdFromName } from "./videoList.js?v=20260916h";
-import { rememberClipTitle } from "./titleStore.js?v=20260916h";
+import { CLIPS_KEY } from "./constants.js?v=20260916i";
+import { roundTenth } from "./time.js?v=20260916i";
+import { fetchJsonIfOk, resourceUrl } from "./http.js?v=20260916i";
+import { videoIdFromName } from "./videoList.js?v=20260916i";
+import { rememberClipTitle } from "./titleStore.js?v=20260916i";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");

@@ -1,13 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916h";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260916h";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916h";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916h";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916h";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916h";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916i";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260916i";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916i";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916i";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916i";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916i";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916h";
+} from "../titleStore.js?v=20260916i";
+import { rememberReturnToLibrary } from "../navMemory.js?v=20260916i";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -56,6 +57,11 @@ export async function renderEditor(root, clipId) {
       };
   if (draft.title == null) draft.title = "";
   if (!draft.created_at) draft.created_at = existing?.created_at || 0;
+
+  function goLibrary() {
+    rememberReturnToLibrary({ editedClipId: draft.id, isNew });
+    location.hash = "#/";
+  }
 
   let duration = 0;
   let previewing = false;
@@ -562,6 +568,7 @@ export async function renderEditor(root, clipId) {
         onClick: async () => {
           if (!confirmAction("Delete this clip?")) return;
           await deleteClip(draft.id);
+          rememberReturnToLibrary({ isNew: true });
           location.hash = "#/";
         },
       })
@@ -571,6 +578,10 @@ export async function renderEditor(root, clipId) {
     class: "btn btn-ghost btn-block editor-rail-btn editor-rail-btn-muted",
     href: "#/",
     text: "Cancel",
+    onClick: (event) => {
+      event.preventDefault();
+      goLibrary();
+    },
   });
 
   let saving = false;
@@ -629,7 +640,7 @@ export async function renderEditor(root, clipId) {
       saveNote.textContent = "Clip saved.";
       status.textContent = "Clip saved.";
       await new Promise((resolve) => setTimeout(resolve, 700));
-      location.hash = "#/";
+      goLibrary();
     } catch (err) {
       saving = false;
       saveBtn.disabled = false;
@@ -676,7 +687,15 @@ export async function renderEditor(root, clipId) {
     el("div", { class: "editor-top" }, [
       el("header", { class: "topbar editor-topbar" }, [
         el("h1", { text: isNew ? "New Clip" : "Edit Clip" }),
-        el("a", { class: "btn btn-ghost", href: "#/", text: "Library" }),
+        el("a", {
+          class: "btn btn-ghost",
+          href: "#/",
+          text: "Library",
+          onClick: (event) => {
+            event.preventDefault();
+            goLibrary();
+          },
+        }),
       ]),
       sticky,
     ]),

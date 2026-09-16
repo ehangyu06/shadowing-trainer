@@ -1,7 +1,7 @@
-import { renderLibrary } from "./screens/library.js?v=20260916h";
-import { renderSettings } from "./screens/settings.js?v=20260916h";
-import { renderEditor } from "./screens/editor.js?v=20260916h";
-import { renderShadowing, destroyShadowing } from "./screens/shadowing.js?v=20260916h";
+import { renderLibrary } from "./screens/library.js?v=20260916i";
+import { renderSettings } from "./screens/settings.js?v=20260916i";
+import { renderEditor } from "./screens/editor.js?v=20260916i";
+import { renderShadowing, destroyShadowing } from "./screens/shadowing.js?v=20260916i";
 
 const root = document.getElementById("app");
 let current = { name: "", key: "" };
@@ -28,7 +28,7 @@ async function render() {
   const editing = route.name === "editor";
   document.documentElement.classList.toggle("editor-lock", editing);
   document.body.classList.toggle("editor-lock", editing);
-  window.scrollTo(0, 0);
+  if (route.name !== "library") window.scrollTo(0, 0);
   if (route.name === "settings") renderSettings(root);
   else if (route.name === "editor") await renderEditor(root, route.id);
   else if (route.name === "shadowing") await renderShadowing(root, route.id);

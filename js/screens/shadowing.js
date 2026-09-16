@@ -1,10 +1,16 @@
-import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916h";
-import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916h";
-import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916h";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916h";
-import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916h";
-import { getVideo } from "../videoList.js?v=20260916h";
-import { el } from "../ui.js?v=20260916h";
+import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916i";
+import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916i";
+import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916i";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916i";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916i";
+import { getVideo } from "../videoList.js?v=20260916i";
+import { el } from "../ui.js?v=20260916i";
+import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260916i";
+
+function goLibraryFromClip(clipId) {
+  setLibraryFocusClip(clipId);
+  location.hash = "#/";
+}
 
 let session = null;
 let renderToken = 0;
@@ -102,6 +108,7 @@ export async function renderShadowing(root, clipId) {
   if (sameClip) return;
 
   destroySession();
+  setLastPlayedClip(clip.id);
   const settings = loadSettings();
   const clips = await loadClips();
   const state = buildSession(clip, settings);
@@ -199,7 +206,7 @@ export async function renderShadowing(root, clipId) {
         text: "Next Clip",
         onClick: () => {
           if (state.neighbors.next != null) location.hash = `#/train/${state.neighbors.next}`;
-          else location.hash = "#/";
+          else goLibraryFromClip(state.clip.id);
         },
       }),
     ]),
@@ -408,6 +415,10 @@ export async function renderShadowing(root, clipId) {
       class: "btn btn-ghost back-library-fixed",
       href: "#/",
       text: "Back to Library",
+      onClick: (event) => {
+        event.preventDefault();
+        goLibraryFromClip(clip.id);
+      },
     }),
     el("div", {
       class: "clip-title-badge",

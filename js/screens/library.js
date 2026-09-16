@@ -1,16 +1,20 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916h";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916h";
-import { loadVideos } from "../videoList.js?v=20260916h";
+import { ASSET_VERSION } from "../constants.js?v=20260916i";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260916i";
+import { loadVideos } from "../videoList.js?v=20260916i";
 import {
   bindPickedFile,
   expectedFilename,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916h";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916h";
-import { el, confirmAction } from "../ui.js?v=20260916h";
-import { formatDuration } from "../time.js?v=20260916h";
+} from "../videoSource.js?v=20260916i";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916i";
+import { el, confirmAction } from "../ui.js?v=20260916i";
+import { formatDuration } from "../time.js?v=20260916i";
+import {
+  clearLibraryFocusClip,
+  resolveLibraryFocusClip,
+} from "../navMemory.js?v=20260916i";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -20,6 +24,7 @@ export async function renderLibrary(root) {
   const total = totalRepeats(settings);
   const videoIds = [...new Set(clips.map((clip) => clip.video_id).filter(Boolean))];
   const statusByVideo = {};
+  const focusId = resolveLibraryFocusClip();
 
   const header = el("header", { class: "topbar" }, [
     el("div", {}, [
@@ -95,6 +100,7 @@ export async function renderLibrary(root) {
   }
 
   const list = el("div", { class: "clip-list" });
+  let focusCard = null;
   if (!clips.length) {
     list.append(
       el("div", { class: "empty-card" }, [
@@ -108,7 +114,14 @@ export async function renderLibrary(root) {
   } else {
     clips.forEach((clip, index) => {
       const duration = Math.max(0, clip.end - clip.start);
-      const card = el("article", { class: "clip-card" });
+      const card = el("article", {
+        class: "clip-card",
+        "data-clip-id": String(clip.id),
+      });
+      if (focusId && String(clip.id) === String(focusId)) {
+        card.classList.add("clip-card-focus");
+        focusCard = card;
+      }
       const open = el("a", { class: "clip-main", href: `#/train/${clip.id}` }, [
         el("div", { class: "clip-kicker", text: clip.title || `Clip ${index + 1}` }),
         el("p", {
@@ -156,4 +169,11 @@ export async function renderLibrary(root) {
     list,
   ]);
   root.append(screen);
+
+  if (focusCard) {
+    requestAnimationFrame(() => {
+      focusCard.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+      clearLibraryFocusClip();
+    });
+  }
 }

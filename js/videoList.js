@@ -1,4 +1,4 @@
-import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js?v=20260916h";
+import { fetchJsonIfOk, resourceUrl, urlLooksReachable, isLocalMediaHost } from "./http.js?v=20260916i";
 
 export const VIDEO_CATALOG_KEY = "shadowing-trainer:videos";
 

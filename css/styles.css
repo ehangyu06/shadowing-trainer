@@ -344,6 +344,11 @@ textarea {
   padding: 16px;
 }
 
+.clip-card-focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  box-shadow: 0 0 0 1px rgba(76, 141, 255, 0.45), 0 8px 22px rgba(76, 141, 255, 0.18);
+}
+
 .clip-main {
   display: block;
   color: inherit;
