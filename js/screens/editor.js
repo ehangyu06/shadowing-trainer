@@ -1,14 +1,14 @@
-import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916l";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260916l";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916l";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916l";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916l";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916l";
+import { getClip, loadClips, nextClipId, upsertClip, deleteClip } from "../clipStore.js?v=20260916m";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260916m";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916m";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916m";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916m";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916m";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916l";
-import { rememberReturnToLibrary } from "../navMemory.js?v=20260916l";
+} from "../titleStore.js?v=20260916m";
+import { rememberReturnToLibrary } from "../navMemory.js?v=20260916m";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -643,7 +643,6 @@ export async function renderEditor(root, clipId) {
         onClick: fixEnd,
       }),
     ]),
-    titleField,
   ]);
 
   const rail = el("aside", { class: "editor-rail" }, [
@@ -675,6 +674,7 @@ export async function renderEditor(root, clipId) {
       sticky,
     ]),
     el("div", { class: "editor-body", id: "editor-scroll" }, [
+      titleField,
       startPad,
       endPad,
       el("label", { class: "field-label", text: "English subtitle" }),
