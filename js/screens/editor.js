@@ -569,7 +569,7 @@ export async function renderEditor(root, clipId) {
       if (draft.end <= draft.start) setEnd(duration);
       attachPlayer();
       uploadVideo(file).catch(() => {});
-      pickBtn.textContent = "다른 영화 선택";
+      pickBtn.textContent = "Select Movie";
       status.textContent = result.reused
         ? `준비됨 (${duration.toFixed(1)}s). Start → End → Fix → Save Clip`
         : `준비됨 (${duration.toFixed(1)}s). Start → End → Fix → Save Clip`;
@@ -592,7 +592,7 @@ export async function renderEditor(root, clipId) {
   const pickBtn = el("button", {
     type: "button",
     class: "btn btn-secondary btn-block editor-rail-btn",
-    text: draft.video_id ? "다른 영화 선택" : "영화 선택",
+    text: "Select Movie",
     onClick: () => fileInput.click(),
   });
 
