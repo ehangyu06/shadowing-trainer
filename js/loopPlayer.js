@@ -89,6 +89,11 @@ export function createLoopPlayer(video) {
       active = true;
       primed = false;
       safeFrames = 0;
+      // If playhead is outside the clip, snap in so we never leak into full-video play.
+      if (inRange()) {
+        const t = video.currentTime || 0;
+        if (t < start || t >= end) jumpToStart();
+      }
     },
     disable() {
       active = false;

@@ -1,11 +1,11 @@
-import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260916u";
-import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260916u";
-import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260916u";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916u";
-import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260916u";
-import { getVideo } from "../videoList.js?v=20260916u";
-import { el } from "../ui.js?v=20260916u";
-import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260916u";
+import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260918a";
+import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260918a";
+import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260918a";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918a";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260918a";
+import { getVideo } from "../videoList.js?v=20260918a";
+import { el } from "../ui.js?v=20260918a";
+import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260918a";
 
 function goLibraryFromClip(clipId) {
   setLibraryFocusClip(clipId);
@@ -130,6 +130,9 @@ export async function renderShadowing(root, clipId) {
   player.setRange(clip.start, clip.end);
   player.disable();
 
+  /** When true, Play Whole mode: full video, no clip loop / phase advance. */
+  let wholeMode = false;
+
   const phaseTitle = el("h2", { class: "phase-title" });
   const phaseCount = el("p", { class: "phase-count" });
   const overallCount = el("p", { class: "overall-count" });
@@ -213,6 +216,16 @@ export async function renderShadowing(root, clipId) {
   ]);
 
   const playBtn = el("button", { type: "button", class: "btn btn-primary", text: "Play" });
+  const restartClipBtn = el("button", {
+    type: "button",
+    class: "btn btn-secondary",
+    text: "Restart Clip",
+  });
+  const playWholeBtn = el("button", {
+    type: "button",
+    class: "btn btn-secondary",
+    text: "Play Whole",
+  });
   const phaseButtons = PHASES.map((phase, index) =>
     el("button", {
       type: "button",
@@ -246,6 +259,25 @@ export async function renderShadowing(root, clipId) {
     })
   );
 
+  function inClipRange(t = video.currentTime || 0) {
+    return t >= state.clip.start && t < state.clip.end;
+  }
+
+  /** Leave Play Whole and restore clip-loop shadowing mode. */
+  function enterClipMode({ seekToStart = false } = {}) {
+    wholeMode = false;
+    player.setRange(state.clip.start, state.clip.end);
+    if (seekToStart || !inClipRange()) {
+      player.seekToStart();
+    }
+    player.enable();
+  }
+
+  function enterWholeMode() {
+    wholeMode = true;
+    player.disable();
+  }
+
   function refreshChrome() {
     const phase = PHASES[state.phase];
     const repeats = state.phaseRepeats[state.phase] || 0;
@@ -258,7 +290,23 @@ export async function renderShadowing(root, clipId) {
     koreanEl.textContent = flags.korean ? state.clip.korean : "";
     englishEl.classList.toggle("hidden", !flags.english || !state.clip.english);
     koreanEl.classList.toggle("hidden", !flags.korean || !state.clip.korean);
-    playBtn.textContent = video.paused ? "Play" : "Pause";
+
+    if (wholeMode) {
+      playBtn.textContent = "Play";
+      playBtn.classList.remove("btn-primary");
+      playBtn.classList.add("btn-secondary");
+      playWholeBtn.textContent = video.paused ? "Play Whole" : "Pause Video";
+      playWholeBtn.classList.add("btn-primary");
+      playWholeBtn.classList.remove("btn-secondary");
+    } else {
+      playBtn.textContent = video.paused ? "Play" : "Pause";
+      playBtn.classList.add("btn-primary");
+      playBtn.classList.remove("btn-secondary");
+      playWholeBtn.textContent = "Play Whole";
+      playWholeBtn.classList.remove("btn-primary");
+      playWholeBtn.classList.add("btn-secondary");
+    }
+
     phaseButtons.forEach((btn, i) => btn.classList.toggle("chip-active", i === state.phase));
     speedButtons.forEach((btn, i) =>
       btn.classList.toggle("chip-active", PLAYBACK_RATES[i] === state.playbackRate)
@@ -274,12 +322,14 @@ export async function renderShadowing(root, clipId) {
 
   function showComplete() {
     state.complete = true;
+    wholeMode = false;
     player.disable();
     video.pause();
     refreshChrome();
   }
 
   player.setOnCycleEnd(() => {
+    if (wholeMode) return false;
     const keepGoing = advanceAfterCycle(state);
     refreshChrome();
     if (!keepGoing) {
@@ -292,6 +342,7 @@ export async function renderShadowing(root, clipId) {
   async function playFromStart() {
     if (!state.mediaReady) return;
     markStartPressed();
+    wholeMode = false;
     player.setRange(state.clip.start, state.clip.end);
     applyRate(video, state.playbackRate);
     if (video.readyState < 1) {
@@ -327,6 +378,7 @@ export async function renderShadowing(root, clipId) {
     state.repeat = 1;
     state.subtitleMode = "auto";
     state.complete = false;
+    wholeMode = false;
     if (state.phaseRepeats.every((n) => n <= 0)) {
       showComplete();
       return;
@@ -335,6 +387,7 @@ export async function renderShadowing(root, clipId) {
     else {
       player.disable();
       video.pause();
+      player.setRange(state.clip.start, state.clip.end);
       player.seekToStart();
       refreshChrome();
     }
@@ -373,14 +426,28 @@ export async function renderShadowing(root, clipId) {
       pickInput.value = "";
     }
   });
+
+  /** Clip-only Play / Pause. Also exits Play Whole back into shadowing. */
   playBtn.addEventListener("click", async () => {
     if (!state.started) {
       await playFromStart();
       return;
     }
     if (state.complete) return;
+
+    if (wholeMode) {
+      enterClipMode({ seekToStart: !inClipRange() });
+      try {
+        await video.play();
+      } catch {
+        /* iOS may still require gesture */
+      }
+      refreshChrome();
+      return;
+    }
+
     if (video.paused) {
-      player.enable();
+      enterClipMode({ seekToStart: !inClipRange() });
       try {
         await video.play();
       } catch {
@@ -391,11 +458,59 @@ export async function renderShadowing(root, clipId) {
     }
     refreshChrome();
   });
+
+  restartClipBtn.addEventListener("click", () => {
+    if (state.complete) return;
+    if (!state.mediaReady) return;
+    enterClipMode({ seekToStart: true });
+    state.started = true;
+    video.play().catch(() => {});
+    refreshChrome();
+  });
+
+  playWholeBtn.addEventListener("click", async () => {
+    if (!state.mediaReady) return;
+    if (state.complete) return;
+
+    if (!wholeMode) {
+      enterWholeMode();
+      state.started = true;
+      try {
+        video.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+      try {
+        await video.play();
+      } catch {
+        /* ignore */
+      }
+      refreshChrome();
+      return;
+    }
+
+    if (video.paused) {
+      try {
+        await video.play();
+      } catch {
+        /* ignore */
+      }
+    } else {
+      video.pause();
+    }
+    refreshChrome();
+  });
+
   video.addEventListener("play", refreshChrome);
   video.addEventListener("pause", refreshChrome);
+  video.addEventListener("ended", () => {
+    if (wholeMode) refreshChrome();
+  });
   video.addEventListener("loadedmetadata", () => {
-    player.setRange(state.clip.start, state.clip.end);
-    player.seekToStart();
+    if (!wholeMode) {
+      player.setRange(state.clip.start, state.clip.end);
+      player.seekToStart();
+    }
   });
   video.addEventListener("error", async () => {
     const videoMeta = await getVideo(state.clip.video_id);
@@ -432,16 +547,7 @@ export async function renderShadowing(root, clipId) {
         el("div", { class: "subtitle-box" }, [englishEl, koreanEl]),
         el("div", { class: "btn-grid" }, [
           playBtn,
-          el("button", {
-            type: "button",
-            class: "btn btn-secondary",
-            text: "Restart Clip",
-            onClick: () => {
-              if (state.complete) return;
-              player.seekToStart();
-              if (state.started) video.play().catch(() => {});
-            },
-          }),
+          restartClipBtn,
           el("button", {
             type: "button",
             class: "btn btn-secondary",
@@ -460,12 +566,7 @@ export async function renderShadowing(root, clipId) {
               if (state.neighbors.next != null) location.hash = `#/train/${state.neighbors.next}`;
             },
           }),
-          el("button", {
-            type: "button",
-            class: "btn btn-secondary",
-            text: "Restart Session",
-            onClick: () => restartSession(state.started),
-          }),
+          playWholeBtn,
           el("a", { class: "btn btn-ghost", href: "#/settings", text: "Settings" }),
         ]),
         el("p", { class: "field-label", text: "Playback Speed" }),

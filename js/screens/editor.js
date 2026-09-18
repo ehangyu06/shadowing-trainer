@@ -311,24 +311,45 @@ export async function renderEditor(root, clipId) {
     if (player) player.setRange(draft.start, draft.end);
   }
 
+  function clearEndFixed(message) {
+    endFixed = false;
+    const shown = draft.end > 0 ? `${draft.end.toFixed(1)}s : pause` : "—";
+    endPad.setState(shown);
+    if (message) status.textContent = message;
+  }
+
   function fixStart() {
     setActiveMark("start");
+    stopPreviewMode();
     player?.disable();
     video.pause();
     const t = currentSafeTime();
     setStart(t);
     startFixed = true;
     startPad.setState(`${t.toFixed(1)} → fix`, { fixed: true });
-    status.textContent = `Start fixed at ${t.toFixed(1)}s`;
+    if (endFixed && !(draft.end > draft.start)) {
+      clearEndFixed(
+        `Start fixed at ${t.toFixed(1)}s — move later and Fix End again (End must be after Start).`
+      );
+    } else {
+      status.textContent = endFixed
+        ? `Start fixed at ${t.toFixed(1)}s — Preview Loop ready.`
+        : `Start fixed at ${t.toFixed(1)}s — now set End later, then Fix.`;
+    }
     refreshPlayButtons();
     refreshConfirmedBoard();
   }
 
   function fixEnd() {
     setActiveMark("end");
+    stopPreviewMode();
     player?.disable();
     video.pause();
     const t = currentSafeTime();
+    if (!startFixed) {
+      status.textContent = `Fix Start first, then move later and Fix End. Now at ${t.toFixed(1)}s.`;
+      return;
+    }
     if (!(t > draft.start)) {
       status.textContent = `End must be later than Start (${draft.start.toFixed(1)}s). Now at ${t.toFixed(1)}s.`;
       return;
@@ -336,13 +357,14 @@ export async function renderEditor(root, clipId) {
     setEnd(t);
     endFixed = true;
     endPad.setState(`${t.toFixed(1)} → fix`, { fixed: true });
-    status.textContent = `End fixed at ${t.toFixed(1)}s`;
+    status.textContent = `End fixed at ${t.toFixed(1)}s — Preview Loop ready.`;
     refreshPlayButtons();
     refreshConfirmedBoard();
   }
 
   function undoStart() {
     setActiveMark("start");
+    stopPreviewMode();
     player?.disable();
     video.pause();
     startFixed = false;
@@ -360,6 +382,7 @@ export async function renderEditor(root, clipId) {
 
   function undoEnd() {
     setActiveMark("end");
+    stopPreviewMode();
     player?.disable();
     video.pause();
     endFixed = false;
@@ -457,29 +480,39 @@ export async function renderEditor(root, clipId) {
     text: "Preview Loop",
   });
   previewBtn.addEventListener("click", async () => {
-    if (draft.end <= draft.start) {
+    if (previewing) {
+      stopPreviewMode();
+      video.pause();
+      status.textContent = "Preview stopped.";
+      refreshPlayButtons();
+      return;
+    }
+    if (!startFixed || !endFixed) {
+      status.textContent = !startFixed
+        ? "Fix Start, then Fix End, before previewing."
+        : "Fix End later than Start before previewing.";
+      return;
+    }
+    if (!(draft.end > draft.start)) {
       status.textContent = "Fix End later than Start before previewing.";
       return;
     }
-    previewing = !previewing;
-    previewBtn.textContent = previewing ? "Stop Preview" : "Preview Loop";
-    previewBtn.classList.toggle("btn-danger", previewing);
+    if (!player) {
+      status.textContent = "Video is not ready yet.";
+      return;
+    }
+    previewing = true;
+    previewBtn.textContent = "Stop Preview";
+    previewBtn.classList.add("btn-danger");
     player.setRange(draft.start, draft.end);
-    if (previewing) {
-      player.seekToStart();
-      player.enable();
-      try {
-        await video.play();
-      } catch {
-        status.textContent = "Tap Play on the video, then Preview Loop again.";
-        previewing = false;
-        player.disable();
-        previewBtn.textContent = "Preview Loop";
-        previewBtn.classList.remove("btn-danger");
-      }
-    } else {
-      player.disable();
-      video.pause();
+    player.seekToStart();
+    player.enable();
+    try {
+      await video.play();
+      status.textContent = `Previewing ${draft.start.toFixed(1)}s → ${draft.end.toFixed(1)}s (loop).`;
+    } catch {
+      status.textContent = "Tap Play on the video, then Preview Loop again.";
+      stopPreviewMode();
     }
     refreshPlayButtons();
   });
