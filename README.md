@@ -5,11 +5,31 @@ iPad에서 짧은 영어 영상 구간을 반복해 쉐도잉하는 독립 웹�
 
 원본 영상과 앱은 분리되어 있습니다. GitHub에는 앱과 클립 metadata만 올리고, 영화 파일은 올리지 않습니다.
 
+## 앱 코드 vs 사용자 콘텐츠 (중요)
+
+| | 앱 코드 | 사용자 콘텐츠 |
+|---|---|---|
+| 위치 | GitHub Pages (JS/CSS/HTML) | iPad Safari `localStorage` + IndexedDB |
+| 업데이트 시 | `ASSET_VERSION`만 바뀜 | **절대 자동으로 지우지 않음** |
+| 포함 | 화면·재생 로직 | 클립 구간, 제목, 자막, 설정, 비디오 목록 메타 |
+
+프로그램(기능)을 고쳐도 클립 데이터 키(`shadowing-trainer:clips` 등)는 바꾸지 않습니다.
+Safari 사이트 데이터를 지우거나 기기를 바꾸면 콘텐츠는 사라질 수 있으므로:
+
+1. **Settings → Export Backup** → Files / iCloud에 저장  
+2. 필요 시 **Settings → Import Backup**으로 복구  
+
+백업 JSON에는 클립·설정이 들어 있고, **영상 파일 자체는 들어 있지 않습니다.** 복구 후 재생이 안 되면 각 클립에서 영상을 한 번 다시 선택하면 됩니다.
+
+구현: `js/userData.js`, `js/constants.js`의 저장 키 주석.
+
 ## 직장에서 열기 (GitHub Pages)
 
 https://ehangyu06.github.io/shadowing-trainer/
 
 Mac이 꺼져 있어도 앱 화면은 열립니다. 원본 영화가 없으면 Library 또는 Study 화면에서 **Select Video File**을 눌러 iPad Files의 mp4/mov를 고르면, 저장된 start/end로 공부합니다.
+
+클립은 이 iPad의 브라우저 저장소에 있습니다. GitHub에 push해도 다른 기기의 클립이 자동으로 복사되지 않습니다. 기기를 옮길 때는 **Export Backup / Import Backup**을 쓰세요.
 
 ### Pages를 처음 켤 때
 
@@ -17,7 +37,7 @@ Mac이 꺼져 있어도 앱 화면은 열립니다. 원본 영화가 없으면 L
 2. **Source** = GitHub Actions
 3. main에 push되면 `.github/workflows/pages.yml`이 배포합니다.
 
-집에서 클립을 새로 만들거나 수정한 뒤에는 `data/clips.json`이 갱신되도록 저장하고, 그 변경을 GitHub에 push해야 직장 iPad에도 반영됩니다.
+집에서 클립을 새로 만들면 그 iPad/브라우저에만 저장됩니다. 백업 파일이 필요하면 Settings에서 Export 하세요.
 
 ## 집에서 실행
 
@@ -65,9 +85,7 @@ cd /Users/kimhangyu/shadowing-trainer
 ## Settings
 
 Phase 횟수와 재생 속도: `localStorage` 키 `shadowing-trainer:settings`  
-구현: `js/settingsStore.js`
-
-클립: `data/clips.json` + `localStorage` 키 `shadowing-trainer:clips`  
-구현: `js/clipStore.js` (`getClips`, `saveClip`, `updateClip`, `deleteClip`)
+클립: `localStorage` 키 `shadowing-trainer:clips` (기기 전용)  
+백업: Settings → Export / Import Backup (`js/userData.js`)
 
 기본 반복 횟수: `js/constants.js`의 `DEFAULT_PHASE_COUNTS` → `[3, 3, 3, 20, 20]`

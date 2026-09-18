@@ -89,8 +89,10 @@ function writeLocalRaw(clips) {
 }
 
 /**
- * Device localStorage is the only source of truth on GitHub Pages.
- * Seed/API merges previously caused new clips to disappear.
+ * Device localStorage is the only source of truth for clips on GitHub Pages.
+ * App updates (ASSET_VERSION) must never clear CLIPS_KEY.
+ * Backup/restore: Settings → Export / Import Backup (js/userData.js).
+ * Seed/API merges previously caused new clips to disappear — do not bring that back.
  */
 export async function loadClips() {
   const deleted = readDeletedIds();

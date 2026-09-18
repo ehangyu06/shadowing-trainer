@@ -1,18 +1,18 @@
-import { ASSET_VERSION } from "../constants.js?v=20260916u";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260916u";
-import { loadVideos } from "../videoList.js?v=20260916u";
+import { ASSET_VERSION } from "../constants.js?v=20260918b";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260918b";
+import { loadVideos } from "../videoList.js?v=20260918b";
 import {
   expectedFilename,
   getLocalBinding,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916u";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260916u";
-import { el, confirmAction } from "../ui.js?v=20260916u";
-import { formatDuration } from "../time.js?v=20260916u";
+} from "../videoSource.js?v=20260918b";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918b";
+import { el, confirmAction } from "../ui.js?v=20260918b";
+import { formatDuration } from "../time.js?v=20260918b";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260916u";
+} from "../navMemory.js?v=20260918b";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -55,7 +55,7 @@ export async function renderLibrary(root) {
       el("div", { class: "empty-card" }, [
         el("h2", { text: "No clips yet" }),
         el("p", {
-          text: "Create a clip at home, or select a video file and set Start / End with Fix.",
+          text: "Create a clip, or restore from Settings → Import Backup if you exported one earlier.",
         }),
         el("a", { class: "btn btn-primary", href: "#/new", text: "Create First Clip" }),
       ])

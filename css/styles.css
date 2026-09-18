@@ -485,6 +485,12 @@ input.title-input {
 }
 
 .settings-total,
+.backup-help {
+  margin: 0 0 12px;
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
 .section-title,
 .field-label {
   margin: 18px 0 8px;

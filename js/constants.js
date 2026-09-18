@@ -29,7 +29,13 @@ export const CLIP_TITLES_KEY = "shadowing-trainer:clip-titles";
 export const LAST_PLAYED_CLIP_KEY = "shadowing-trainer:last-played-clip";
 export const LIBRARY_FOCUS_CLIP_KEY = "shadowing-trainer:library-focus-clip";
 export const LIBRARY_CLEANUP_KEY = "shadowing-trainer:library-cleanup-v2";
-export const ASSET_VERSION = "20260918a";
+
+/**
+ * App code version (cache bust). Bumping this updates UI/JS only.
+ * Never clear or rename the keys above when bumping — user content must survive.
+ * Backup/restore: js/userData.js (Settings → Export / Import Backup).
+ */
+export const ASSET_VERSION = "20260918b";
 
 export const DEFAULT_PHASE_COUNTS = [3, 3, 3, 20, 20];
 export const DEFAULT_PLAYBACK_RATE = 1.0;
