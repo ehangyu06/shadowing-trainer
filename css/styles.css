@@ -196,6 +196,23 @@ input.title-input {
   margin-bottom: 18px;
 }
 
+.settings-screen {
+  padding-top: calc(var(--pad) + 56px + env(safe-area-inset-top, 0px));
+}
+
+.settings-topbar {
+  margin-bottom: 12px;
+}
+
+.status-line.status-saved {
+  color: #6ddea3;
+  font-weight: 600;
+}
+
+.save-settings-btn.is-saved {
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
 .topbar h1,
 .train-screen h2,
 .settings-screen h1,

@@ -1,11 +1,11 @@
-import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260918c";
-import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260918c";
+import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260918e";
+import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260918e";
 import {
   readBackupFile,
   restoreBackup,
   summarizeBackup,
-} from "../userData.js?v=20260918c";
-import { el, stepper, confirmAction } from "../ui.js?v=20260918c";
+} from "../userData.js?v=20260918e";
+import { el, stepper, confirmAction } from "../ui.js?v=20260918e";
 
 export function renderSettings(root) {
   const settings = loadSettings();
@@ -13,6 +13,7 @@ export function renderSettings(root) {
     phases: [...settings.phases],
     playbackRate: settings.playbackRate,
   };
+  let saveTimer = 0;
 
   root.replaceChildren();
 
@@ -37,6 +38,7 @@ export function renderSettings(root) {
       onChange: (n) => {
         draft.phases[index] = n;
         refreshTotal();
+        clearSavedLook();
       },
     });
     row.append(control);
@@ -53,6 +55,7 @@ export function renderSettings(root) {
           text: formatRate(rate),
           onClick: () => {
             draft.playbackRate = rate;
+            clearSavedLook();
             renderSpeed();
           },
         })
@@ -63,6 +66,59 @@ export function renderSettings(root) {
 
   const status = el("p", { class: "status-line" });
   const backupStatus = el("p", { class: "status-line" });
+
+  const saveBtn = el("button", {
+    type: "button",
+    class: "btn btn-primary btn-block save-settings-btn",
+    text: "Save Settings",
+  });
+
+  function clearSavedLook() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = 0;
+    }
+    saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Save Settings";
+    status.classList.remove("status-saved");
+  }
+
+  function showSaved() {
+    saveBtn.classList.remove("is-saving");
+    saveBtn.classList.add("is-pressed", "is-saved");
+    saveBtn.textContent = "Saved ✓";
+    saveBtn.disabled = true;
+    status.textContent = "Saved. New sessions will use these repeat counts.";
+    status.classList.add("status-saved");
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      saveBtn.classList.remove("is-pressed", "is-saved");
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save Settings";
+      status.classList.remove("status-saved");
+      saveTimer = 0;
+    }, 1800);
+  }
+
+  saveBtn.addEventListener("pointerdown", () => {
+    if (!saveBtn.disabled) saveBtn.classList.add("is-pressed");
+  });
+  for (const evt of ["pointerup", "pointercancel", "pointerleave"]) {
+    saveBtn.addEventListener(evt, () => {
+      if (!saveBtn.classList.contains("is-saved") && !saveBtn.classList.contains("is-saving")) {
+        saveBtn.classList.remove("is-pressed");
+      }
+    });
+  }
+
+  saveBtn.addEventListener("click", () => {
+    saveBtn.classList.add("is-pressed", "is-saving");
+    saveBtn.textContent = "Saving…";
+    draft = saveSettings(draft);
+    // Brief beat so the press → saved transition is visible on iPad.
+    setTimeout(showSaved, 120);
+  });
 
   const importInput = el("input", {
     type: "file",
@@ -93,8 +149,15 @@ export function renderSettings(root) {
     }
   });
 
+  const backBtn = el("a", {
+    class: "btn btn-ghost back-library-fixed",
+    href: "#/",
+    text: "Back to Library",
+  });
+
   const screen = el("section", { class: "screen settings-screen" }, [
-    el("header", { class: "topbar" }, [
+    backBtn,
+    el("header", { class: "topbar settings-topbar" }, [
       el("h1", { text: "Shadowing Settings" }),
     ]),
     el("div", { class: "settings-card" }, phaseRows),
@@ -102,15 +165,7 @@ export function renderSettings(root) {
     el("h2", { class: "section-title", text: "Playback Speed" }),
     speedRow,
     el("div", { class: "stack-actions" }, [
-      el("button", {
-        type: "button",
-        class: "btn btn-primary btn-block",
-        text: "Save Settings",
-        onClick: () => {
-          draft = saveSettings(draft);
-          status.textContent = "Saved. New sessions will use these repeat counts.";
-        },
-      }),
+      saveBtn,
       el("button", {
         type: "button",
         class: "btn btn-secondary btn-block",
@@ -137,11 +192,6 @@ export function renderSettings(root) {
         onClick: () => importInput.click(),
       }),
       importInput,
-      el("a", {
-        class: "btn btn-ghost btn-block",
-        href: "#/",
-        text: "Back to Library",
-      }),
     ]),
     backupStatus,
   ]);
