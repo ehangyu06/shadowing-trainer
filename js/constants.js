@@ -23,6 +23,8 @@ export function formatRate(rate) {
 
 export const SETTINGS_KEY = "shadowing-trainer:settings";
 export const CLIPS_KEY = "shadowing-trainer:clips";
+/** Redundant localStorage copy — used if primary clips key is empty. */
+export const CLIPS_MIRROR_KEY = "shadowing-trainer:clips-mirror";
 export const CLIPS_DELETED_KEY = "shadowing-trainer:clips-deleted";
 export const VIDEO_BINDINGS_KEY = "shadowing-trainer:video-bindings";
 export const CLIP_TITLES_KEY = "shadowing-trainer:clip-titles";
@@ -37,7 +39,7 @@ export const LAST_EXPORT_SNAPSHOT_KEY = "shadowing-trainer:last-export-snapshot"
  * Never clear or rename the keys above when bumping — user content must survive.
  * Backup/restore: Library → Export, Settings → Import Backup (js/userData.js).
  */
-export const ASSET_VERSION = "20260918e";
+export const ASSET_VERSION = "20260918f";
 
 export const DEFAULT_PHASE_COUNTS = [3, 3, 3, 20, 20];
 export const DEFAULT_PLAYBACK_RATE = 1.0;

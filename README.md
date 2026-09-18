@@ -19,6 +19,9 @@ Safari 사이트 데이터를 지우거나 기기를 바꾸면 콘텐츠는 사�
 1. **Library → Export** → 추가·변경된 클립이 있을 때만 Files / iCloud에 저장  
 2. 필요 시 **Settings → Import Backup**으로 복구  
 
+앱을 켤 때마다 클립은 localStorage 미러 + IndexedDB vault에도 자동 복사됩니다. 그래도 **Safari가 사이트 전체를 지우면** vault까지 사라지므로 Export가 필요합니다.
+버전 숫자(v20260918f 등)를 올리는 것은 JS/CSS만 바꾸며, 클립 저장 키를 지우지 않습니다.
+
 백업 JSON에는 클립·설정이 들어 있고, **영상 파일 자체는 들어 있지 않습니다.** 복구 후 재생이 안 되면 각 클립에서 영상을 한 번 다시 선택하면 됩니다.
 
 구현: `js/userData.js`, `js/constants.js`의 저장 키 주석.

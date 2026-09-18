@@ -1,29 +1,32 @@
-import { ASSET_VERSION } from "../constants.js?v=20260918e";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260918e";
-import { loadVideos } from "../videoList.js?v=20260918e";
+import { ASSET_VERSION } from "../constants.js?v=20260918f";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260918f";
+import { loadVideos } from "../videoList.js?v=20260918f";
 import {
   expectedFilename,
   getLocalBinding,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260918e";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918e";
-import { exportLibraryClipsIfChanged } from "../userData.js?v=20260918e";
-import { el, confirmAction } from "../ui.js?v=20260918e";
-import { formatDuration } from "../time.js?v=20260918e";
+} from "../videoSource.js?v=20260918f";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918f";
+import { exportLibraryClipsIfChanged } from "../userData.js?v=20260918f";
+import { backupReminderMessage, syncContentVault } from "../contentVault.js?v=20260918f";
+import { el, confirmAction } from "../ui.js?v=20260918f";
+import { formatDuration } from "../time.js?v=20260918f";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260918e";
+} from "../navMemory.js?v=20260918f";
 
-export async function renderLibrary(root) {
+export async function renderLibrary(root, hydrateInfo = null) {
   root.replaceChildren();
   const settings = loadSettings();
   const clips = await loadClips();
+  syncContentVault().catch(() => {});
   const videos = await loadVideos();
   const total = totalRepeats(settings);
   const videoIds = [...new Set(clips.map((clip) => clip.video_id).filter(Boolean))];
   const statusByVideo = {};
   const focusId = resolveLibraryFocusClip();
+  const reminder = backupReminderMessage();
 
   for (const videoId of videoIds) {
     const url = await resolveVideoUrl(videoId);
@@ -34,6 +37,13 @@ export async function renderLibrary(root) {
   }
 
   const exportStatus = el("p", { class: "muted export-status", text: "" });
+  if (hydrateInfo?.restored) {
+    exportStatus.textContent = `복구됨: 백업 저장소에서 클립 ${hydrateInfo.clipCount}개를 되살렸습니다. 지금 Export로 Files에도 저장하세요.`;
+    exportStatus.classList.add("export-status-warn");
+  } else if (reminder) {
+    exportStatus.textContent = reminder;
+    exportStatus.classList.add("export-status-warn");
+  }
 
   const exportBtn = el("button", {
     type: "button",
@@ -43,9 +53,15 @@ export async function renderLibrary(root) {
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
     exportStatus.textContent = "Exporting…";
+    exportStatus.classList.remove("export-status-warn");
     try {
+      await syncContentVault();
       const result = await exportLibraryClipsIfChanged();
       exportStatus.textContent = result.message || "";
+      if (!result.skipped) exportStatus.classList.remove("export-status-warn");
+      else if (result.reason === "unchanged") {
+        exportStatus.textContent = result.message;
+      }
     } catch (err) {
       exportStatus.textContent = err.message || "Could not export.";
     } finally {
@@ -67,6 +83,10 @@ export async function renderLibrary(root) {
         class: "muted",
         text: `Default session: ${settings.phases.join(" + ")} = ${total} loops · v${ASSET_VERSION}`,
       }),
+      el("p", {
+        class: "muted storage-note",
+        text: "앱 업데이트(버전 숫자)는 클립을 지우지 않습니다. Safari 사이트 데이터를 지우면 사라집니다 — Export로 Files/iCloud에 백업하세요.",
+      }),
       exportStatus,
     ]),
   ]);
@@ -78,7 +98,7 @@ export async function renderLibrary(root) {
       el("div", { class: "empty-card" }, [
         el("h2", { text: "No clips yet" }),
         el("p", {
-          text: "Create a clip, or restore from Settings → Import Backup if you exported one earlier.",
+          text: "Create a clip, or restore from Settings → Import Backup if you saved an Export file earlier.",
         }),
         el("a", { class: "btn btn-primary", href: "#/new", text: "Create First Clip" }),
       ])

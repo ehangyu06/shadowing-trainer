@@ -1,11 +1,11 @@
-import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260918e";
-import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260918e";
+import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260918f";
+import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260918f";
 import {
   readBackupFile,
   restoreBackup,
   summarizeBackup,
-} from "../userData.js?v=20260918e";
-import { el, stepper, confirmAction } from "../ui.js?v=20260918e";
+} from "../userData.js?v=20260918f";
+import { el, stepper, confirmAction } from "../ui.js?v=20260918f";
 
 export function renderSettings(root) {
   const settings = loadSettings();

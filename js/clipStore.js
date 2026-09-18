@@ -1,7 +1,8 @@
-import { CLIPS_KEY, CLIPS_DELETED_KEY } from "./constants.js?v=20260916u";
-import { roundTenth } from "./time.js?v=20260916u";
-import { videoIdFromName } from "./videoList.js?v=20260916u";
-import { rememberClipTitle } from "./titleStore.js?v=20260916u";
+import { CLIPS_KEY, CLIPS_MIRROR_KEY, CLIPS_DELETED_KEY } from "./constants.js?v=20260918f";
+import { roundTenth } from "./time.js?v=20260918f";
+import { videoIdFromName } from "./videoList.js?v=20260918f";
+import { rememberClipTitle } from "./titleStore.js?v=20260918f";
+import { mirrorClipsPayload, scheduleContentVaultSync } from "./contentVault.js?v=20260918f";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
@@ -68,6 +69,7 @@ function writeLocalRaw(clips) {
   const payload = JSON.stringify(next);
   try {
     localStorage.setItem(CLIPS_KEY, payload);
+    mirrorClipsPayload(payload);
   } catch (err) {
     throw new Error(
       err?.name === "QuotaExceededError"
@@ -85,18 +87,33 @@ function writeLocalRaw(clips) {
       throw new Error(`Clip ${clip.id} missing after save.`);
     }
   }
+  scheduleContentVaultSync();
   return check;
 }
 
 /**
  * Device localStorage is the only source of truth for clips on GitHub Pages.
  * App updates (ASSET_VERSION) must never clear CLIPS_KEY.
- * Backup/restore: Settings → Export / Import Backup (js/userData.js).
- * Seed/API merges previously caused new clips to disappear — do not bring that back.
+ * Mirrors: localStorage clips-mirror + IndexedDB vault (js/contentVault.js).
+ * Files backup: Library → Export.
  */
 export async function loadClips() {
   const deleted = readDeletedIds();
-  const raw = readLocalRaw();
+  let raw = readLocalRaw();
+  if (!raw.length) {
+    try {
+      const mirrorRaw = localStorage.getItem(CLIPS_MIRROR_KEY);
+      if (mirrorRaw) {
+        const parsed = JSON.parse(mirrorRaw);
+        if (Array.isArray(parsed) && parsed.length) {
+          raw = normalizeClips(parsed);
+          writeLocalRaw(raw);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   const local = raw.filter((clip) => !deleted.has(String(clip.id)));
   if (local.length !== raw.length) {
     writeLocalRaw(local);

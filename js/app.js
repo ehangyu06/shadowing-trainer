@@ -1,12 +1,14 @@
-import { renderLibrary } from "./screens/library.js?v=20260918e";
-import { renderVideos } from "./screens/videos.js?v=20260918e";
-import { renderSettings } from "./screens/settings.js?v=20260918e";
-import { renderEditor } from "./screens/editor.js?v=20260918e";
-import { renderShadowing, destroyShadowing } from "./screens/shadowing.js?v=20260918e";
+import { renderLibrary } from "./screens/library.js?v=20260918f";
+import { renderVideos } from "./screens/videos.js?v=20260918f";
+import { renderSettings } from "./screens/settings.js?v=20260918f";
+import { renderEditor } from "./screens/editor.js?v=20260918f";
+import { renderShadowing, destroyShadowing } from "./screens/shadowing.js?v=20260918f";
+import { hydrateUserContentIfNeeded } from "./contentVault.js?v=20260918f";
 
 const root = document.getElementById("app");
 let current = { name: "", key: "" };
 let renderGen = 0;
+let hydrated = false;
 
 function parseRoute() {
   const hash = window.location.hash.replace(/^#/, "") || "/";
@@ -19,9 +21,21 @@ function parseRoute() {
   return { name: "library", key: "library" };
 }
 
+async function ensureHydrated() {
+  if (hydrated) return null;
+  hydrated = true;
+  try {
+    return await hydrateUserContentIfNeeded();
+  } catch {
+    return null;
+  }
+}
+
 async function render() {
   const route = parseRoute();
   const myGen = ++renderGen;
+  const hydrateInfo = await ensureHydrated();
+  if (myGen !== renderGen) return;
   if (current.name === "shadowing" && route.name !== "shadowing") {
     destroyShadowing();
   }
@@ -35,7 +49,7 @@ async function render() {
   else if (route.name === "videos") await renderVideos(root);
   else if (route.name === "editor") await renderEditor(root, route.id);
   else if (route.name === "shadowing") await renderShadowing(root, route.id);
-  else await renderLibrary(root);
+  else await renderLibrary(root, hydrateInfo);
   if (myGen !== renderGen) return;
 }
 
