@@ -1,5 +1,5 @@
-import { loadClips } from "../clipStore.js?v=20260918h";
-import { loadVideos } from "../videoList.js?v=20260918h";
+import { loadClips } from "../clipStore.js?v=20260918i";
+import { loadVideos } from "../videoList.js?v=20260918i";
 import {
   bindPickedFile,
   expectedFilename,
@@ -8,8 +8,8 @@ import {
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260918h";
-import { el, confirmAction } from "../ui.js?v=20260918h";
+} from "../videoSource.js?v=20260918i";
+import { el, confirmAction } from "../ui.js?v=20260918i";
 
 export async function renderVideos(root) {
   root.replaceChildren();

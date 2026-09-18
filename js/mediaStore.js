@@ -46,7 +46,7 @@ export async function saveMediaBlob(videoId, blob, meta = {}) {
   } catch (err) {
     if (err && (err.name === "QuotaExceededError" || err.code === 22)) {
       throw new Error(
-        "This device is out of storage for saved videos. Free space, then select the file again."
+        "Safari website storage limit reached (this is separate from iPad free space). In Videos, use Remove from iPad on duplicate movies, then reuse the same video for new clips."
       );
     }
     throw err;

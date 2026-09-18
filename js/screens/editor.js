@@ -1,15 +1,15 @@
-import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260918g";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260918g";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260918g";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918g";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260918g";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260918g";
+import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260918i";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260918i";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260918i";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918i";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260918i";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260918i";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
   nextNumberedVariant,
-} from "../titleStore.js?v=20260918g";
-import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260918g";
+} from "../titleStore.js?v=20260918i";
+import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260918i";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -539,6 +539,26 @@ export async function renderEditor(root, clipId) {
     class: "file-input",
   });
 
+  async function attachExistingVideoId(videoId, label) {
+    if (!videoId) return false;
+    status.textContent = `Opening ${label || videoId}…`;
+    stopPreviewMode();
+    video.pause();
+    const url = await resolveVideoUrl(videoId);
+    if (!url) {
+      status.textContent = `저장된 영상을 찾을 수 없습니다. Select Video File로 다시 고르세요.`;
+      return false;
+    }
+    draft.video_id = videoId;
+    setVideoSource(video, url);
+    await waitForVideoReady(video);
+    duration = video.duration || 0;
+    if (draft.end <= draft.start) setEnd(duration);
+    attachPlayer();
+    status.textContent = `Ready: ${label || videoId} (${duration.toFixed(1)}s) · 이전 클립과 같은 영상 (추가 저장 없음)`;
+    return true;
+  }
+
   async function handlePickedFile(file) {
     if (!file) {
       status.textContent = "No file was selected.";
@@ -548,7 +568,6 @@ export async function renderEditor(root, clipId) {
     stopPreviewMode();
     video.pause();
     try {
-      // Same file as an earlier clip → reuse one stored copy (saves iPad space).
       const result = await bindPickedFile(file);
       const { videoId, url } = result;
       draft.video_id = videoId;
@@ -560,15 +579,18 @@ export async function renderEditor(root, clipId) {
       if (draft.end <= draft.start) setEnd(duration);
       attachPlayer();
       uploadVideo(file).catch(() => {});
-      const reuseNote = result.reused ? " · 같은 영상 재사용 (용량 절약)" : " · saved on this device";
-      status.textContent = result.persistError
-        ? `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) — not saved on device (${result.persistError})`
-        : `Ready: ${file.name || videoId} (${duration.toFixed(1)}s)${result.reused ? reuseNote : " · saved on this device"}`;
+      if (result.persistError) {
+        status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s). ${result.persistError}`;
+      } else if (result.reused) {
+        status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) · 같은 영상 재사용 (Safari 저장 한도 절약)`;
+      } else {
+        status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) · saved on this device`;
+      }
     } catch (err) {
       const msg = err.message || "Could not open this video.";
-      status.textContent = /storage|Quota|out of storage/i.test(msg)
-        ? `${msg} Videos 화면에서 안 쓰는 영상을 지운 뒤, 같은 영화는 다시 선택하면 재사용됩니다.`
-        : `${msg} Try Files app → Browse, or another format.`;
+      status.textContent = /storage|Quota|Safari website storage/i.test(msg)
+        ? `${msg}`
+        : `${msg} Try Files app → Browse, or use “이전 클립과 같은 영상”.`;
     } finally {
       fileInput.value = "";
     }
@@ -578,6 +600,25 @@ export async function renderEditor(root, clipId) {
     const file = fileInput.files?.[0];
     handlePickedFile(file);
   });
+
+  const lastClipWithVideo = [...clips].reverse().find((c) => c.video_id);
+  const reuseVideoBtn = lastClipWithVideo
+    ? el("button", {
+        type: "button",
+        class: "btn btn-primary btn-block editor-rail-btn",
+        text: "이전 클립과 같은 영상",
+        onClick: async () => {
+          try {
+            await attachExistingVideoId(
+              lastClipWithVideo.video_id,
+              lastClipWithVideo.title || lastClipWithVideo.video_id
+            );
+          } catch (err) {
+            status.textContent = err.message || "Could not open previous video.";
+          }
+        },
+      })
+    : null;
 
   const pickBtn = el("button", {
     type: "button",
@@ -706,6 +747,7 @@ export async function renderEditor(root, clipId) {
 
   const rail = el("aside", { class: "editor-rail" }, [
     el("div", { class: "editor-rail-stack" }, [
+      reuseVideoBtn,
       pickBtn,
       fileInput,
       previewBtn,

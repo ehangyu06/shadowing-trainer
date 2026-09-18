@@ -1,12 +1,12 @@
-import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260918h";
+import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260918i";
 import {
   formatBytes,
   hasMediaBlob,
   loadMediaRecord,
   saveMediaBlob,
   deleteMediaBlob,
-} from "./mediaStore.js?v=20260918h";
-import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260918h";
+} from "./mediaStore.js?v=20260918i";
+import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260918i";
 
 export { formatBytes };
 
@@ -30,23 +30,42 @@ function revoke(videoId) {
   objectUrls.delete(videoId);
 }
 
-export function fileFingerprint(fileLike) {
-  return [
-    String(fileLike?.name || fileLike?.filename || ""),
-    Number(fileLike?.size) || 0,
-    Number(fileLike?.lastModified) || 0,
-  ].join("|");
+function fileName(fileLike) {
+  return String(fileLike?.name || fileLike?.filename || "").trim().toLowerCase();
 }
 
-/** Same Photos/Files pick → reuse one stored copy (avoids filling iPad after clip 5+). */
-export function findReusableVideoId(file) {
+/**
+ * Photos/iCloud often changes lastModified on every pick — do NOT use it for matching.
+ * name + size is enough to treat it as the same movie.
+ */
+export function fileFingerprint(fileLike) {
+  return `${fileName(fileLike)}|${Number(fileLike?.size) || 0}`;
+}
+
+/** Prefer an id that already has a blob on disk. */
+export async function findReusableVideoId(file) {
   if (!file) return null;
-  const fp = fileFingerprint(file);
-  if (fp === "|0|0") return null;
+  const name = fileName(file);
+  const size = Number(file.size) || 0;
+  if (!name && !size) return null;
+
   const bindings = readBindings();
-  for (const [id, meta] of Object.entries(bindings)) {
-    if (fileFingerprint(meta) === fp) return id;
+  const entries = Object.entries(bindings);
+
+  const nameSizeHits = entries.filter(
+    ([, meta]) => fileName(meta) === name && Number(meta.size) === size
+  );
+  for (const [id] of nameSizeHits) {
+    if (await hasMediaBlob(id)) return id;
   }
+  if (nameSizeHits.length) return nameSizeHits[0][0];
+
+  const nameHits = entries.filter(([, meta]) => fileName(meta) === name);
+  for (const [id] of nameHits) {
+    if (await hasMediaBlob(id)) return id;
+  }
+  if (nameHits.length === 1) return nameHits[0][0];
+
   return null;
 }
 
@@ -89,21 +108,20 @@ export function getLocalFileUrl(videoId) {
   return objectUrls.get(videoId) || null;
 }
 
-export async function bindLocalFile(videoId, file) {
+export async function bindLocalFile(videoId, file, { persist = true } = {}) {
   revoke(videoId);
   rememberBinding(videoId, file);
 
-  // Already have this exact file on disk under this id — do not write another copy.
   try {
     const existing = await loadMediaRecord(videoId);
     if (
       existing?.blob &&
       Number(existing.size) === Number(file.size || 0) &&
-      (existing.filename || "") === (file.name || `${videoId}.mp4`)
+      fileName(existing) === fileName(file)
     ) {
       const url = URL.createObjectURL(existing.blob);
       objectUrls.set(videoId, url);
-      return url;
+      return { url, persisted: true, reusedBlob: true };
     }
   } catch {
     /* save fresh below */
@@ -111,17 +129,22 @@ export async function bindLocalFile(videoId, file) {
 
   const url = URL.createObjectURL(file);
   objectUrls.set(videoId, url);
+
+  if (!persist) {
+    return { url, persisted: false, reusedBlob: false };
+  }
+
   try {
     await saveMediaBlob(videoId, file, {
       filename: file.name || `${videoId}.mp4`,
       type: file.type || "",
       lastModified: file.lastModified || 0,
     });
+    return { url, persisted: true, reusedBlob: false };
   } catch (err) {
     err.sessionUrl = url;
     throw err;
   }
-  return url;
 }
 
 export async function resolveHomeServerUrl(_videoId) {
@@ -158,12 +181,17 @@ export async function resolveVideoUrl(videoId) {
   return resolveHomeServerUrl(videoId);
 }
 
+/**
+ * Attach a picked file. Always prefers reusing an on-device copy.
+ * If Safari site storage is full, still opens the file for this session
+ * so Save Clip can succeed without writing another multi‑GB blob.
+ */
 export async function bindPickedFile(file, preferredId) {
   if (!file) throw new Error("No file selected");
   const fallbackName = preferredId ? `${preferredId}.mp4` : `clip_${Date.now()}.mp4`;
   const name = file.name || fallbackName;
 
-  const reusedId = findReusableVideoId(file);
+  const reusedId = await findReusableVideoId(file);
   const videoId =
     reusedId ||
     preferredId ||
@@ -175,7 +203,6 @@ export async function bindPickedFile(file, preferredId) {
     filename: name,
   });
 
-  // Reuse path: blob already on device — just open it.
   if (reusedId && (await hasMediaBlob(reusedId))) {
     const url = await resolveVideoUrl(reusedId);
     if (url) {
@@ -185,16 +212,37 @@ export async function bindPickedFile(file, preferredId) {
   }
 
   try {
-    const url = await bindLocalFile(videoId, file);
-    return { videoId, url, persisted: true, reused: Boolean(reusedId) };
+    const result = await bindLocalFile(videoId, file, { persist: true });
+    return {
+      videoId,
+      url: result.url,
+      persisted: result.persisted,
+      reused: Boolean(reusedId) || result.reusedBlob,
+    };
   } catch (err) {
+    // Safari site quota (NOT iPad free space). Keep session playback; allow Save Clip.
     if (err.sessionUrl) {
+      // Last resort: any same-name blob already on device
+      const fallbackId = await findReusableVideoId(file);
+      if (fallbackId && fallbackId !== videoId && (await hasMediaBlob(fallbackId))) {
+        const url = await resolveVideoUrl(fallbackId);
+        if (url) {
+          return {
+            videoId: fallbackId,
+            url,
+            persisted: true,
+            reused: true,
+            persistError: null,
+          };
+        }
+      }
       return {
         videoId,
         url: err.sessionUrl,
         persisted: false,
-        persistError: err.message,
-        reused: Boolean(reusedId),
+        reused: false,
+        persistError:
+          "Safari 사이트 저장 한도(아이패드 여유 용량과 별개)에 닿았습니다. 이번 세션에서는 재생·저장 가능합니다. Videos에서 Remove from iPad로 중복 영상을 지운 뒤, “이전 클립과 같은 영상”을 쓰세요.",
       };
     }
     throw err;
