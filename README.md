@@ -86,6 +86,6 @@ cd /Users/kimhangyu/shadowing-trainer
 
 Phase 횟수와 재생 속도: `localStorage` 키 `shadowing-trainer:settings`  
 클립: `localStorage` 키 `shadowing-trainer:clips` (기기 전용)  
-백업: Settings → Export / Import Backup (`js/userData.js`)
+백업: Library → Export (변경 있을 때만) · Settings → Import Backup (`js/userData.js`)
 
 기본 반복 횟수: `js/constants.js`의 `DEFAULT_PHASE_COUNTS` → `[3, 3, 3, 20, 20]`
