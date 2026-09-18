@@ -12,12 +12,12 @@ import {
   CLIPS_KEY,
   CLIPS_MIRROR_KEY,
   ASSET_VERSION,
-} from "./constants.js?v=20260918f";
+} from "./constants.js?v=20260918g";
 import {
   buildBackup,
   restoreBackup,
   diffClipsSinceLastExport,
-} from "./userData.js?v=20260918f";
+} from "./userData.js?v=20260918g";
 
 const DB_NAME = "shadowing-trainer-vault";
 const STORE = "backups";

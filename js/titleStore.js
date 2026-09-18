@@ -1,4 +1,4 @@
-import { CLIP_TITLES_KEY } from "./constants.js?v=20260916u";
+import { CLIP_TITLES_KEY } from "./constants.js?v=20260918g";
 
 function uniqueKeepOrder(items) {
   const seen = new Set();
@@ -38,22 +38,42 @@ export function collectClipTitles(clips = []) {
   return uniqueKeepOrder([...readStoredTitles(), ...fromClips]);
 }
 
-function titleBase(title) {
+export function titleBase(title) {
   return String(title || "")
     .trim()
     .replace(/\s+\d+$/, "")
     .trim();
 }
 
-function nextNumberedVariant(title, usedLower) {
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Next free title: "이름", then "이름 2" … "이름 999" (skips taken numbers). */
+export function nextNumberedVariant(title, usedLower) {
   const base = titleBase(title);
   if (!base) return "";
   const used = usedLower instanceof Set ? usedLower : new Set(usedLower || []);
-  for (let n = 2; n <= 99; n += 1) {
+  const baseLower = base.toLowerCase();
+
+  let maxUsed = 0;
+  if (used.has(baseLower)) maxUsed = 1;
+  const numbered = new RegExp(`^${escapeRegExp(baseLower)} (\\d+)$`);
+  for (const entry of used) {
+    const m = String(entry).match(numbered);
+    if (m) maxUsed = Math.max(maxUsed, Number(m[1]) || 0);
+  }
+
+  const start = Math.max(2, maxUsed + 1);
+  for (let n = start; n <= 999; n += 1) {
     const candidate = `${base} ${n}`;
     if (!used.has(candidate.toLowerCase())) return candidate;
   }
-  return "";
+  for (let n = 2; n < start; n += 1) {
+    const candidate = `${base} ${n}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+  return `${base} ${Date.now().toString(36)}`;
 }
 
 /**
@@ -99,6 +119,15 @@ export function suggestClipTitles(input, clips = [], options = {}) {
     }
 
     out.push(title);
+  }
+
+  // Always offer the next free sequential name for the typed/base title.
+  if (q || ownTitle || matched.length) {
+    const seed = String(input || "").trim() || ownTitle || matched[0] || "";
+    if (seed) {
+      const next = nextNumberedVariant(seed, takenByOthers);
+      if (next) out.unshift(next);
+    }
   }
 
   if (!q && !out.length) {

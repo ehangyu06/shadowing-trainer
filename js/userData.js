@@ -24,8 +24,8 @@ import {
   LIBRARY_FOCUS_CLIP_KEY,
   LAST_EXPORT_SNAPSHOT_KEY,
   ASSET_VERSION,
-} from "./constants.js?v=20260918f";
-import { VIDEO_CATALOG_KEY } from "./videoList.js?v=20260918f";
+} from "./constants.js?v=20260918g";
+import { VIDEO_CATALOG_KEY } from "./videoList.js?v=20260918g";
 
 export const BACKUP_FORMAT = "shadowing-trainer-backup";
 export const BACKUP_VERSION = 1;

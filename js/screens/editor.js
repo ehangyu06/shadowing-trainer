@@ -1,14 +1,15 @@
-import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260916u";
-import { loadVideos, uploadVideo, videoIdFromName } from "../videoList.js?v=20260916u";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260916u";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260916u";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260916u";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260916u";
+import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260918g";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260918g";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260918g";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918g";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260918g";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260918g";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
-} from "../titleStore.js?v=20260916u";
-import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260916u";
+  nextNumberedVariant,
+} from "../titleStore.js?v=20260918g";
+import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260918g";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -131,6 +132,21 @@ export async function renderEditor(root, clipId) {
     spellcheck: "false",
   });
   titleInput.value = draft.title || "";
+
+  // New clip: offer next number after existing series (e.g. …5 → …6).
+  if (isNew && !draft.title && clips.length) {
+    const taken = new Set(
+      clips.map((c) => String(c.title || "").trim().toLowerCase()).filter(Boolean)
+    );
+    const latest = [...clips].reverse().find((c) => String(c.title || "").trim());
+    if (latest?.title) {
+      const suggested = nextNumberedVariant(latest.title, taken);
+      if (suggested) {
+        titleInput.value = suggested;
+        draft.title = suggested;
+      }
+    }
+  }
 
   function hideTitleSuggest() {
     titleSuggest.classList.add("hidden");
@@ -532,11 +548,8 @@ export async function renderEditor(root, clipId) {
     stopPreviewMode();
     video.pause();
     try {
-      // Editor must NEVER overwrite a video_id that other clips may share.
-      // Always store the picked file under a unique id for this clip only.
-      const base = videoIdFromName(file.name || `video_${Date.now()}`) || `video_${Date.now().toString(36)}`;
-      const exclusiveId = `${base}_${Date.now().toString(36)}`;
-      const result = await bindPickedFile(file, exclusiveId);
+      // Same file as an earlier clip → reuse one stored copy (saves iPad space).
+      const result = await bindPickedFile(file);
       const { videoId, url } = result;
       draft.video_id = videoId;
       const fresh = await loadVideos();
@@ -547,11 +560,15 @@ export async function renderEditor(root, clipId) {
       if (draft.end <= draft.start) setEnd(duration);
       attachPlayer();
       uploadVideo(file).catch(() => {});
+      const reuseNote = result.reused ? " · 같은 영상 재사용 (용량 절약)" : " · saved on this device";
       status.textContent = result.persistError
         ? `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) — not saved on device (${result.persistError})`
-        : `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) · saved on this device`;
+        : `Ready: ${file.name || videoId} (${duration.toFixed(1)}s)${result.reused ? reuseNote : " · saved on this device"}`;
     } catch (err) {
-      status.textContent = err.message || "Could not open this video. Try Files app → Browse, or another format.";
+      const msg = err.message || "Could not open this video.";
+      status.textContent = /storage|Quota|out of storage/i.test(msg)
+        ? `${msg} Videos 화면에서 안 쓰는 영상을 지운 뒤, 같은 영화는 다시 선택하면 재사용됩니다.`
+        : `${msg} Try Files app → Browse, or another format.`;
     } finally {
       fileInput.value = "";
     }

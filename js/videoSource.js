@@ -1,6 +1,6 @@
-import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260916u";
-import { formatBytes, loadMediaRecord, saveMediaBlob } from "./mediaStore.js?v=20260916u";
-import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260916u";
+import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260918g";
+import { formatBytes, hasMediaBlob, loadMediaRecord, saveMediaBlob } from "./mediaStore.js?v=20260918g";
+import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260918g";
 
 const objectUrls = new Map();
 
@@ -20,6 +20,26 @@ function revoke(videoId) {
   const prev = objectUrls.get(videoId);
   if (prev) URL.revokeObjectURL(prev);
   objectUrls.delete(videoId);
+}
+
+export function fileFingerprint(fileLike) {
+  return [
+    String(fileLike?.name || fileLike?.filename || ""),
+    Number(fileLike?.size) || 0,
+    Number(fileLike?.lastModified) || 0,
+  ].join("|");
+}
+
+/** Same Photos/Files pick → reuse one stored copy (avoids filling iPad after clip 5+). */
+export function findReusableVideoId(file) {
+  if (!file) return null;
+  const fp = fileFingerprint(file);
+  if (fp === "|0|0") return null;
+  const bindings = readBindings();
+  for (const [id, meta] of Object.entries(bindings)) {
+    if (fileFingerprint(meta) === fp) return id;
+  }
+  return null;
 }
 
 function rememberBinding(videoId, fileLike) {
@@ -45,9 +65,26 @@ export function getLocalFileUrl(videoId) {
 
 export async function bindLocalFile(videoId, file) {
   revoke(videoId);
+  rememberBinding(videoId, file);
+
+  // Already have this exact file on disk under this id — do not write another copy.
+  try {
+    const existing = await loadMediaRecord(videoId);
+    if (
+      existing?.blob &&
+      Number(existing.size) === Number(file.size || 0) &&
+      (existing.filename || "") === (file.name || `${videoId}.mp4`)
+    ) {
+      const url = URL.createObjectURL(existing.blob);
+      objectUrls.set(videoId, url);
+      return url;
+    }
+  } catch {
+    /* save fresh below */
+  }
+
   const url = URL.createObjectURL(file);
   objectUrls.set(videoId, url);
-  rememberBinding(videoId, file);
   try {
     await saveMediaBlob(videoId, file, {
       filename: file.name || `${videoId}.mp4`,
@@ -55,17 +92,12 @@ export async function bindLocalFile(videoId, file) {
       lastModified: file.lastModified || 0,
     });
   } catch (err) {
-    // Keep the in-memory URL for this session even if disk save fails.
     err.sessionUrl = url;
     throw err;
   }
   return url;
 }
 
-/**
- * LocalFileVideoSource: iPad/Mac file picker or a small bundled/http relative file.
- * HomeServerVideoSource: add resolveHomeServerUrl() later for Mac mini + Tailscale.
- */
 export async function resolveHomeServerUrl(_videoId) {
   return null;
 }
@@ -104,18 +136,40 @@ export async function bindPickedFile(file, preferredId) {
   if (!file) throw new Error("No file selected");
   const fallbackName = preferredId ? `${preferredId}.mp4` : `clip_${Date.now()}.mp4`;
   const name = file.name || fallbackName;
-  const videoId = preferredId || videoIdFromName(name);
+
+  const reusedId = findReusableVideoId(file);
+  const videoId =
+    reusedId ||
+    preferredId ||
+    `${videoIdFromName(name) || "video"}_${Date.now().toString(36)}`;
+
   await upsertVideo({
     id: videoId,
     title: name.replace(/\.[^.]+$/, "") || videoId,
     filename: name,
   });
+
+  // Reuse path: blob already on device — just open it.
+  if (reusedId && (await hasMediaBlob(reusedId))) {
+    const url = await resolveVideoUrl(reusedId);
+    if (url) {
+      rememberBinding(reusedId, file);
+      return { videoId: reusedId, url, persisted: true, reused: true };
+    }
+  }
+
   try {
     const url = await bindLocalFile(videoId, file);
-    return { videoId, url, persisted: true };
+    return { videoId, url, persisted: true, reused: Boolean(reusedId) };
   } catch (err) {
     if (err.sessionUrl) {
-      return { videoId, url: err.sessionUrl, persisted: false, persistError: err.message };
+      return {
+        videoId,
+        url: err.sessionUrl,
+        persisted: false,
+        persistError: err.message,
+        reused: Boolean(reusedId),
+      };
     }
     throw err;
   }

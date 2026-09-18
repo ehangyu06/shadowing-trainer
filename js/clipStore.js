@@ -1,8 +1,8 @@
-import { CLIPS_KEY, CLIPS_MIRROR_KEY, CLIPS_DELETED_KEY } from "./constants.js?v=20260918f";
-import { roundTenth } from "./time.js?v=20260918f";
-import { videoIdFromName } from "./videoList.js?v=20260918f";
-import { rememberClipTitle } from "./titleStore.js?v=20260918f";
-import { mirrorClipsPayload, scheduleContentVaultSync } from "./contentVault.js?v=20260918f";
+import { CLIPS_KEY, CLIPS_MIRROR_KEY, CLIPS_DELETED_KEY } from "./constants.js?v=20260918g";
+import { roundTenth } from "./time.js?v=20260918g";
+import { videoIdFromName } from "./videoList.js?v=20260918g";
+import { rememberClipTitle } from "./titleStore.js?v=20260918g";
+import { mirrorClipsPayload, scheduleContentVaultSync } from "./contentVault.js?v=20260918g";
 
 function normalizeClip(clip, index = 0) {
   const legacyPath = String(clip.video || "");
