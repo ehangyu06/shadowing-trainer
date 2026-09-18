@@ -415,6 +415,19 @@ input.title-input {
   word-break: break-all;
 }
 
+.bind-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: stretch;
+}
+
+.bind-actions .btn {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
 .bind-row p {
   margin: 4px 0 0;
 }

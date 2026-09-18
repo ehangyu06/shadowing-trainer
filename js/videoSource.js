@@ -1,6 +1,14 @@
-import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260918g";
-import { formatBytes, hasMediaBlob, loadMediaRecord, saveMediaBlob } from "./mediaStore.js?v=20260918g";
-import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260918g";
+import { VIDEO_BINDINGS_KEY } from "./constants.js?v=20260918h";
+import {
+  formatBytes,
+  hasMediaBlob,
+  loadMediaRecord,
+  saveMediaBlob,
+  deleteMediaBlob,
+} from "./mediaStore.js?v=20260918h";
+import { bundledOrHttpUrl, getVideo, upsertVideo, videoIdFromName } from "./videoList.js?v=20260918h";
+
+export { formatBytes };
 
 const objectUrls = new Map();
 
@@ -57,6 +65,24 @@ function rememberBinding(videoId, fileLike) {
 
 export function getLocalBinding(videoId) {
   return readBindings()[videoId] || null;
+}
+
+export function clearLocalBinding(videoId) {
+  if (!videoId) return;
+  const bindings = readBindings();
+  delete bindings[videoId];
+  writeBindings(bindings);
+  revoke(videoId);
+}
+
+/**
+ * Free device space used by the video file. Clip metadata is kept;
+ * playback will ask to Select Video File again.
+ */
+export async function evictVideoFromDevice(videoId) {
+  if (!videoId) return;
+  clearLocalBinding(videoId);
+  await deleteMediaBlob(videoId);
 }
 
 export function getLocalFileUrl(videoId) {

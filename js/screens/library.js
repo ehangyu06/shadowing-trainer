@@ -1,20 +1,20 @@
-import { ASSET_VERSION } from "../constants.js?v=20260918g";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260918g";
-import { loadVideos } from "../videoList.js?v=20260918g";
+import { ASSET_VERSION } from "../constants.js?v=20260918h";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260918h";
+import { loadVideos } from "../videoList.js?v=20260918h";
 import {
   expectedFilename,
   getLocalBinding,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260918g";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918g";
-import { exportLibraryClipsIfChanged } from "../userData.js?v=20260918g";
-import { backupReminderMessage, syncContentVault } from "../contentVault.js?v=20260918g";
-import { el, confirmAction } from "../ui.js?v=20260918g";
-import { formatDuration } from "../time.js?v=20260918g";
+} from "../videoSource.js?v=20260918h";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918h";
+import { exportLibraryClipsIfChanged } from "../userData.js?v=20260918h";
+import { backupReminderMessage, syncContentVault } from "../contentVault.js?v=20260918h";
+import { el, confirmAction } from "../ui.js?v=20260918h";
+import { formatDuration } from "../time.js?v=20260918h";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260918g";
+} from "../navMemory.js?v=20260918h";
 
 export async function renderLibrary(root, hydrateInfo = null) {
   root.replaceChildren();

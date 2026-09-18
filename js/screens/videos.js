@@ -1,13 +1,15 @@
-import { loadClips } from "../clipStore.js?v=20260916u";
-import { loadVideos } from "../videoList.js?v=20260916u";
+import { loadClips } from "../clipStore.js?v=20260918h";
+import { loadVideos } from "../videoList.js?v=20260918h";
 import {
   bindPickedFile,
   expectedFilename,
+  evictVideoFromDevice,
+  formatBytes,
   getLocalBinding,
   mediaStatusLabel,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260916u";
-import { el, confirmAction } from "../ui.js?v=20260916u";
+} from "../videoSource.js?v=20260918h";
+import { el, confirmAction } from "../ui.js?v=20260918h";
 
 export async function renderVideos(root) {
   root.replaceChildren();
@@ -20,7 +22,7 @@ export async function renderVideos(root) {
       el("h1", { text: "Videos" }),
       el("p", {
         class: "muted",
-        text: "Original video files saved on this device. Change here only when several clips share one source.",
+        text: "영화 파일은 기기 용량을 씁니다. 같은 영화는 클립이 많아도 1번만 저장됩니다. 안 쓰는 영화는 “Remove from iPad”로 용량만 비울 수 있습니다(클립 정보는 유지).",
       }),
     ]),
     el("div", { class: "topbar-actions" }, [
@@ -43,7 +45,7 @@ export async function renderVideos(root) {
     list.append(
       el("p", {
         class: "muted bind-hint",
-        text: "“Change Video File” replaces this source for every clip that uses it. To change only one clip, open that clip’s Edit → Select Video File.",
+        text: "“Change Video File” replaces this source for every clip that uses it. “Remove from iPad” deletes only the big file copy — clip times/titles stay. Play again later with Select Video File.",
       })
     );
     for (const videoId of videoIds) {
@@ -52,6 +54,7 @@ export async function renderVideos(root) {
       const binding = getLocalBinding(videoId);
       const wanted = expectedFilename(video, binding);
       const users = clips.filter((clip) => String(clip.video_id) === String(videoId));
+      const sizeLabel = binding?.size ? formatBytes(binding.size) : "";
       const row = el("div", {
         class: url ? "bind-row bind-row-ready" : "bind-row bind-row-need",
       });
@@ -83,9 +86,42 @@ export async function renderVideos(root) {
         input.value = "";
         renderVideos(root);
       });
+
+      const actions = el("div", { class: "bind-actions" }, [
+        el("button", {
+          type: "button",
+          class: url ? "btn btn-secondary" : "btn btn-primary",
+          text: url ? "Change Video File" : "Select Video File",
+          onClick: () => input.click(),
+        }),
+      ]);
+      if (url || binding?.size) {
+        actions.append(
+          el("button", {
+            type: "button",
+            class: "btn btn-ghost",
+            text: sizeLabel ? `Remove from iPad (${sizeLabel})` : "Remove from iPad",
+            onClick: async () => {
+              const ok = confirmAction(
+                `Remove this video file from the iPad to free space${sizeLabel ? ` (~${sizeLabel})` : ""}?\n\n` +
+                  `${users.length} clip(s) keep their start/end times.\n` +
+                  `To play again, select the movie file once more.`
+              );
+              if (!ok) return;
+              try {
+                await evictVideoFromDevice(videoId);
+                renderVideos(root);
+              } catch (err) {
+                alert(err.message || "Could not remove video.");
+              }
+            },
+          })
+        );
+      }
+
       row.append(
         el("div", { class: "bind-copy" }, [
-          el("strong", { text: videoId }),
+          el("strong", { text: video?.title || videoId }),
           wanted ? el("p", { class: "bind-filename", text: wanted }) : null,
           el("p", {
             class: "muted",
@@ -96,12 +132,7 @@ export async function renderVideos(root) {
             text: `Used by ${users.length} clip${users.length === 1 ? "" : "s"}`,
           }),
         ]),
-        el("button", {
-          type: "button",
-          class: url ? "btn btn-secondary" : "btn btn-primary",
-          text: url ? "Change Video File" : "Select Video File",
-          onClick: () => input.click(),
-        }),
+        actions,
         input
       );
       list.append(row);
