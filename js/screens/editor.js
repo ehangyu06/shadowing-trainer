@@ -1,15 +1,15 @@
-import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260918i";
-import { loadVideos, uploadVideo } from "../videoList.js?v=20260918i";
-import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260918i";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918i";
-import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260918i";
-import { el, seekFixPad, confirmAction } from "../ui.js?v=20260918i";
+import { getClip, loadClips, upsertClip, deleteClip } from "../clipStore.js?v=20260918j";
+import { loadVideos, uploadVideo } from "../videoList.js?v=20260918j";
+import { bindPickedFile, resolveVideoUrl } from "../videoSource.js?v=20260918j";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918j";
+import { formatClock, roundTenth, clamp, formatDuration } from "../time.js?v=20260918j";
+import { el, seekFixPad, confirmAction } from "../ui.js?v=20260918j";
 import {
   formatClipCreatedAt,
   suggestClipTitles,
   nextNumberedVariant,
-} from "../titleStore.js?v=20260918i";
-import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260918i";
+} from "../titleStore.js?v=20260918j";
+import { setLibraryFocusClip, rememberReturnToLibrary } from "../navMemory.js?v=20260918j";
 
 function waitForVideoReady(videoEl, timeoutMs = 20000) {
   if (videoEl.readyState >= 1 && Number.isFinite(videoEl.duration) && videoEl.duration > 0) {
@@ -58,6 +58,12 @@ export async function renderEditor(root, clipId) {
       };
   if (draft.title == null) draft.title = "";
   if (!draft.created_at) draft.created_at = existing?.created_at || 0;
+
+  // New clip: automatically keep using the last clip's movie — no extra steps.
+  if (isNew && !draft.video_id) {
+    const last = [...clips].reverse().find((c) => c.video_id);
+    if (last?.video_id) draft.video_id = last.video_id;
+  }
 
   function goLibrary() {
     rememberReturnToLibrary({ editedClipId: draft.id, isNew });
@@ -448,10 +454,12 @@ export async function renderEditor(root, clipId) {
 
   async function loadSelectedVideo() {
     if (!draft.video_id) return false;
-    status.textContent = `Opening ${draft.video_id}…`;
+    status.textContent = isNew ? "이전 클립 영상 불러오는 중…" : `Opening ${draft.video_id}…`;
     const url = await resolveVideoUrl(draft.video_id);
     if (!url) {
-      status.textContent = `Select a video file for ${draft.video_id}.`;
+      status.textContent = isNew
+        ? "이전 영상을 찾지 못했습니다. 아래에서 영화 파일을 한 번만 선택하세요."
+        : `Select a video file for ${draft.video_id}.`;
       return false;
     }
     setVideoSource(video, url);
@@ -467,7 +475,9 @@ export async function renderEditor(root, clipId) {
         /* ignore */
       }
       currentTimeEl.textContent = `Current: ${formatClock(seekTo)} (${seekTo.toFixed(1)}s)`;
-      status.textContent = `Ready: ${draft.video_id} (${duration.toFixed(1)}s)`;
+      status.textContent = isNew
+        ? `준비됨 (${duration.toFixed(1)}s). Start → End → Fix → Save Clip 만 하면 됩니다.`
+        : `Ready: ${draft.video_id} (${duration.toFixed(1)}s)`;
       attachPlayer();
       return true;
     } catch (err) {
@@ -539,26 +549,6 @@ export async function renderEditor(root, clipId) {
     class: "file-input",
   });
 
-  async function attachExistingVideoId(videoId, label) {
-    if (!videoId) return false;
-    status.textContent = `Opening ${label || videoId}…`;
-    stopPreviewMode();
-    video.pause();
-    const url = await resolveVideoUrl(videoId);
-    if (!url) {
-      status.textContent = `저장된 영상을 찾을 수 없습니다. Select Video File로 다시 고르세요.`;
-      return false;
-    }
-    draft.video_id = videoId;
-    setVideoSource(video, url);
-    await waitForVideoReady(video);
-    duration = video.duration || 0;
-    if (draft.end <= draft.start) setEnd(duration);
-    attachPlayer();
-    status.textContent = `Ready: ${label || videoId} (${duration.toFixed(1)}s) · 이전 클립과 같은 영상 (추가 저장 없음)`;
-    return true;
-  }
-
   async function handlePickedFile(file) {
     if (!file) {
       status.textContent = "No file was selected.";
@@ -579,18 +569,16 @@ export async function renderEditor(root, clipId) {
       if (draft.end <= draft.start) setEnd(duration);
       attachPlayer();
       uploadVideo(file).catch(() => {});
+      pickBtn.textContent = "다른 영화 선택";
+      status.textContent = result.reused
+        ? `준비됨 (${duration.toFixed(1)}s). Start → End → Fix → Save Clip`
+        : `준비됨 (${duration.toFixed(1)}s). Start → End → Fix → Save Clip`;
       if (result.persistError) {
-        status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s). ${result.persistError}`;
-      } else if (result.reused) {
-        status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) · 같은 영상 재사용 (Safari 저장 한도 절약)`;
-      } else {
-        status.textContent = `Ready: ${file.name || videoId} (${duration.toFixed(1)}s) · saved on this device`;
+        status.textContent += " (이번만 임시 재생 — 저장은 가능)";
       }
     } catch (err) {
-      const msg = err.message || "Could not open this video.";
-      status.textContent = /storage|Quota|Safari website storage/i.test(msg)
-        ? `${msg}`
-        : `${msg} Try Files app → Browse, or use “이전 클립과 같은 영상”.`;
+      status.textContent =
+        err.message || "영상을 열 수 없습니다. Files에서 다시 선택해 주세요.";
     } finally {
       fileInput.value = "";
     }
@@ -601,29 +589,10 @@ export async function renderEditor(root, clipId) {
     handlePickedFile(file);
   });
 
-  const lastClipWithVideo = [...clips].reverse().find((c) => c.video_id);
-  const reuseVideoBtn = lastClipWithVideo
-    ? el("button", {
-        type: "button",
-        class: "btn btn-primary btn-block editor-rail-btn",
-        text: "이전 클립과 같은 영상",
-        onClick: async () => {
-          try {
-            await attachExistingVideoId(
-              lastClipWithVideo.video_id,
-              lastClipWithVideo.title || lastClipWithVideo.video_id
-            );
-          } catch (err) {
-            status.textContent = err.message || "Could not open previous video.";
-          }
-        },
-      })
-    : null;
-
   const pickBtn = el("button", {
     type: "button",
     class: "btn btn-secondary btn-block editor-rail-btn",
-    text: "Select Video File",
+    text: draft.video_id ? "다른 영화 선택" : "영화 선택",
     onClick: () => fileInput.click(),
   });
 
@@ -686,13 +655,13 @@ export async function renderEditor(root, clipId) {
       return;
     }
     if (!draft.video_id) {
-      saveNote.textContent = "Choose or select a video first.";
+      saveNote.textContent = "먼저 영화를 선택해 주세요.";
       status.textContent = saveNote.textContent;
       saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
       return;
     }
     if (!(draft.end > draft.start)) {
-      saveNote.textContent = "End must be later than Start. Fix Start / End first.";
+      saveNote.textContent = "End가 Start보다 뒤여야 합니다. Fix로 구간을 정해 주세요.";
       status.textContent = saveNote.textContent;
       saveBtn.classList.remove("is-pressed", "is-saving", "is-saved");
       return;
@@ -747,7 +716,6 @@ export async function renderEditor(root, clipId) {
 
   const rail = el("aside", { class: "editor-rail" }, [
     el("div", { class: "editor-rail-stack" }, [
-      reuseVideoBtn,
       pickBtn,
       fileInput,
       previewBtn,
