@@ -1,11 +1,11 @@
-import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260918a";
-import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260918a";
-import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260918a";
-import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918a";
-import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260918a";
-import { getVideo } from "../videoList.js?v=20260918a";
-import { el } from "../ui.js?v=20260918a";
-import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260918a";
+import { PHASES, PLAYBACK_RATES, SUBTITLE_MODES, formatRate } from "../constants.js?v=20260918d";
+import { loadSettings, saveSettings, totalRepeats } from "../settingsStore.js?v=20260918d";
+import { getClip, loadClips, neighborIds } from "../clipStore.js?v=20260918d";
+import { createLoopPlayer, setVideoSource } from "../loopPlayer.js?v=20260918d";
+import { bindPickedFile, expectedFilename, getLocalBinding, resolveVideoUrl } from "../videoSource.js?v=20260918d";
+import { getVideo } from "../videoList.js?v=20260918d";
+import { el } from "../ui.js?v=20260918d";
+import { setLastPlayedClip, setLibraryFocusClip } from "../navMemory.js?v=20260918d";
 
 function goLibraryFromClip(clipId) {
   setLibraryFocusClip(clipId);
@@ -447,6 +447,8 @@ export async function renderShadowing(root, clipId) {
     }
 
     if (video.paused) {
+      // Always re-arm clip loop before resume (Pause must never leak into full video).
+      player.setRange(state.clip.start, state.clip.end);
       enterClipMode({ seekToStart: !inClipRange() });
       try {
         await video.play();

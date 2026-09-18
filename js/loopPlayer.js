@@ -1,38 +1,44 @@
 /**
  * Keeps a single HTML5 video element and loops only [start, end].
  * The source is never reloaded while looping.
+ *
+ * End is always enforced while active — including after Pause → Play mid-clip.
+ * A short seek guard prevents false end triggers while currentTime settles after jumpToStart.
  */
 export function createLoopPlayer(video) {
   let start = 0;
   let end = 0;
   let active = false;
-  let primed = false;
-  let safeFrames = 0;
   let onCycleEnd = null;
   let rafId = 0;
+  let seekGuardUntil = 0;
+  let cycling = false;
 
   function inRange() {
     return end > start;
   }
 
-  function inSafeZone(t) {
-    const span = end - start;
-    if (span <= 0) return false;
-    const latest = start + Math.max(span * 0.45, Math.min(0.2, span * 0.8));
-    return t >= start && t < Math.min(latest, end - 0.08);
+  function armSeekGuard(ms = 320) {
+    seekGuardUntil = performance.now() + ms;
   }
 
   function jumpToStart() {
-    video.currentTime = start;
+    armSeekGuard();
+    try {
+      video.currentTime = start;
+    } catch {
+      /* ignore */
+    }
   }
 
   function completeCycle() {
-    if (!active || !primed || !inRange()) return;
-    primed = false;
-    safeFrames = 0;
+    if (!active || !inRange() || cycling) return;
+    cycling = true;
+    armSeekGuard();
     const shouldContinue = onCycleEnd ? onCycleEnd() : true;
     if (shouldContinue === false) {
       active = false;
+      cycling = false;
       video.pause();
       return;
     }
@@ -41,31 +47,42 @@ export function createLoopPlayer(video) {
     if (playPromise && typeof playPromise.catch === "function") {
       playPromise.catch(() => {});
     }
+    // Release after the seek has had a moment to land inside the clip.
+    setTimeout(() => {
+      cycling = false;
+    }, 80);
   }
 
   function check() {
     if (!active || !inRange()) return;
-    const t = video.currentTime;
-    if (!primed) {
-      if (inSafeZone(t)) {
-        safeFrames += 1;
-        if (safeFrames >= 6) primed = true;
-      } else {
-        safeFrames = 0;
-      }
+    if (video.paused) return;
+    if (video.seeking) return;
+    if (performance.now() < seekGuardUntil) return;
+
+    const t = video.currentTime || 0;
+
+    if (t < start - 0.08) {
+      jumpToStart();
       return;
     }
-    if (video.seeking) return;
-    if (t >= end || (!video.paused && t >= end - 0.04)) {
+
+    // Hard stop at clip end — must work even when resuming near the end.
+    if (t >= end - 0.03) {
       completeCycle();
-    } else if (!video.paused && t < start - 0.08) {
-      jumpToStart();
     }
   }
 
   function onEnded() {
     if (!active) return;
     completeCycle();
+  }
+
+  function onSeeked() {
+    if (!active || !inRange()) return;
+    const t = video.currentTime || 0;
+    if (t >= start && t < end) {
+      seekGuardUntil = 0;
+    }
   }
 
   function tick() {
@@ -75,6 +92,7 @@ export function createLoopPlayer(video) {
 
   video.addEventListener("timeupdate", check);
   video.addEventListener("ended", onEnded);
+  video.addEventListener("seeked", onSeeked);
   rafId = requestAnimationFrame(tick);
 
   return {
@@ -87,22 +105,23 @@ export function createLoopPlayer(video) {
     },
     enable() {
       active = true;
-      primed = false;
-      safeFrames = 0;
-      // If playhead is outside the clip, snap in so we never leak into full-video play.
-      if (inRange()) {
-        const t = video.currentTime || 0;
-        if (t < start || t >= end) jumpToStart();
+      cycling = false;
+      if (!inRange()) return;
+      const t = video.currentTime || 0;
+      // Outside the clip → snap to start. Inside → keep position (Pause → Play resume).
+      if (t < start || t >= end - 0.03) {
+        jumpToStart();
+      } else {
+        seekGuardUntil = 0;
       }
     },
     disable() {
       active = false;
-      primed = false;
-      safeFrames = 0;
+      cycling = false;
+      seekGuardUntil = 0;
     },
     seekToStart() {
-      primed = false;
-      safeFrames = 0;
+      cycling = false;
       jumpToStart();
     },
     isActive() {
@@ -110,10 +129,11 @@ export function createLoopPlayer(video) {
     },
     destroy() {
       active = false;
-      primed = false;
+      cycling = false;
       cancelAnimationFrame(rafId);
       video.removeEventListener("timeupdate", check);
       video.removeEventListener("ended", onEnded);
+      video.removeEventListener("seeked", onSeeked);
     },
   };
 }
