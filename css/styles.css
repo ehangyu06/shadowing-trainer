@@ -230,9 +230,16 @@ input.title-input {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
+.export-status {
+  margin: 8px 0 0;
+  min-height: 1.2em;
+  font-size: 0.92rem;
+}
+
 .library-nav-fixed .btn {
   min-height: 48px;
-  padding: 10px 14px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
 }
 
 .library-screen {

@@ -1,18 +1,19 @@
-import { ASSET_VERSION } from "../constants.js?v=20260918b";
-import { loadClips, deleteClip } from "../clipStore.js?v=20260918b";
-import { loadVideos } from "../videoList.js?v=20260918b";
+import { ASSET_VERSION } from "../constants.js?v=20260918c";
+import { loadClips, deleteClip } from "../clipStore.js?v=20260918c";
+import { loadVideos } from "../videoList.js?v=20260918c";
 import {
   expectedFilename,
   getLocalBinding,
   resolveVideoUrl,
-} from "../videoSource.js?v=20260918b";
-import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918b";
-import { el, confirmAction } from "../ui.js?v=20260918b";
-import { formatDuration } from "../time.js?v=20260918b";
+} from "../videoSource.js?v=20260918c";
+import { totalRepeats, loadSettings } from "../settingsStore.js?v=20260918c";
+import { exportLibraryClipsIfChanged } from "../userData.js?v=20260918c";
+import { el, confirmAction } from "../ui.js?v=20260918c";
+import { formatDuration } from "../time.js?v=20260918c";
 import {
   clearLibraryFocusClip,
   resolveLibraryFocusClip,
-} from "../navMemory.js?v=20260918b";
+} from "../navMemory.js?v=20260918c";
 
 export async function renderLibrary(root) {
   root.replaceChildren();
@@ -32,9 +33,30 @@ export async function renderLibrary(root) {
     statusByVideo[videoId] = { url, wanted };
   }
 
+  const exportStatus = el("p", { class: "muted export-status", text: "" });
+
+  const exportBtn = el("button", {
+    type: "button",
+    class: "btn btn-secondary",
+    text: "Export",
+  });
+  exportBtn.addEventListener("click", async () => {
+    exportBtn.disabled = true;
+    exportStatus.textContent = "Exporting…";
+    try {
+      const result = await exportLibraryClipsIfChanged();
+      exportStatus.textContent = result.message || "";
+    } catch (err) {
+      exportStatus.textContent = err.message || "Could not export.";
+    } finally {
+      exportBtn.disabled = false;
+    }
+  });
+
   const nav = el("nav", { class: "library-nav-fixed", "aria-label": "Library actions" }, [
     el("a", { class: "btn btn-secondary", href: "#/videos", text: "Videos" }),
     el("a", { class: "btn btn-secondary", href: "#/settings", text: "Settings" }),
+    exportBtn,
     el("a", { class: "btn btn-primary", href: "#/new", text: "New Clip" }),
   ]);
 
@@ -45,6 +67,7 @@ export async function renderLibrary(root) {
         class: "muted",
         text: `Default session: ${settings.phases.join(" + ")} = ${total} loops · v${ASSET_VERSION}`,
       }),
+      exportStatus,
     ]),
   ]);
 

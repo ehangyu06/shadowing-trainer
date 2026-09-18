@@ -1,12 +1,11 @@
-import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260918b";
-import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260918b";
+import { PHASES, PLAYBACK_RATES, formatRate } from "../constants.js?v=20260918c";
+import { loadSettings, saveSettings, totalRepeats, defaultSettings } from "../settingsStore.js?v=20260918c";
 import {
-  shareOrDownloadBackup,
   readBackupFile,
   restoreBackup,
   summarizeBackup,
-} from "../userData.js?v=20260918b";
-import { el, stepper, confirmAction } from "../ui.js?v=20260918b";
+} from "../userData.js?v=20260918c";
+import { el, stepper, confirmAction } from "../ui.js?v=20260918c";
 
 export function renderSettings(root) {
   const settings = loadSettings();
@@ -124,33 +123,13 @@ export function renderSettings(root) {
       }),
     ]),
     status,
-    el("h2", { class: "section-title", text: "Backup (clips & settings)" }),
+    el("h2", { class: "section-title", text: "Restore backup" }),
     el("p", {
       class: "muted backup-help",
       text:
-        "App updates never erase your clips. Export a backup to Files/iCloud so you can restore after clearing Safari data or moving to another iPad. Video files are not inside the backup.",
+        "Export is on the Library screen (top Export button). It saves only when clips were added or changed. Use Import here to restore a backup file from Files / iCloud.",
     }),
     el("div", { class: "stack-actions" }, [
-      el("button", {
-        type: "button",
-        class: "btn btn-secondary btn-block",
-        text: "Export Backup",
-        onClick: async () => {
-          try {
-            const result = await shareOrDownloadBackup();
-            if (result.method === "cancelled") {
-              backupStatus.textContent = "Export cancelled.";
-              return;
-            }
-            backupStatus.textContent =
-              result.method === "share"
-                ? `Shared ${result.filename} (${result.clipCount} clips). Save it to Files or iCloud.`
-                : `Downloaded ${result.filename} (${result.clipCount} clips).`;
-          } catch (err) {
-            backupStatus.textContent = err.message || "Could not export backup.";
-          }
-        },
-      }),
       el("button", {
         type: "button",
         class: "btn btn-secondary btn-block",
